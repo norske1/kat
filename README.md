@@ -101,7 +101,7 @@ Sound instances. The five original mono WAV effects are in `assets/weapons/`. Th
 and a visual/audio preview**, not a shooting system: clicking does not create bullets, use ammo,
 or deal damage. Your weapon server code should call `MedicalAPI.damage(...)` on validated hits.
 
-On your own Windows PC, update this repo and sync it to Studio as usual:
+After this change is merged, on your own Windows PC update the repo and sync it to Studio as usual:
 
 ```powershell
 git pull
