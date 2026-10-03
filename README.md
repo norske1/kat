@@ -18,6 +18,8 @@ It is written from scratch in Luau. The mechanics follow the KAT/ACE design, but
 | Cardiac | Arrest on blood loss, hypoxia, brady/tachycardia, tension PTX, tamponade, overdose, transfusion reaction. VF/VT/PEA/asystole, arrest timer, CPR (slows the timer), AED and AED-X with manual shocks, reversible causes block ROSC, pericardiocentesis |
 | Pharmacy | 16g IV / FAST IO, saline/plasma/blood bags (all ABO/Rh types, compatibility, hemolytic reaction), and 18 medications with onset/peak/decay curves, dose stacking and overdoses. Naloxone and flumazenil reversal |
 | Monitoring | Manual pulse/BP/response checks, pulse oximeter, AED-X monitor with live ECG trace, ultrasound, blood type test |
+| Animations & sound | Every treatment has a procedural animation (kneel, bandage wrap, tourniquet, injection, CPR compressions, BVM, surgery, carry/drag holds) and sounds (bandage, ratchet, syringe, suction, AED charge/shock, body falls, pain) |
+| Guns | M4A1 rifle, M17 pistol, M870 shotgun built from parts, server-validated hitscan, hits become medical wounds on the exact limb, magazines/reloads, fire modes, recoil, spread, muzzle flash, tracers, impacts, weapon/ammo racks |
 | Gameplay | Unconsciousness with ragdoll, carry and drag, medic levels (0 non-medic, 1 medic, 2 doctor) gating treatments, loadouts and supply crates, triage tags, treatment log, screen effects (pain vignette, blur, desaturation, blackout) |
 
 ## Project layout
@@ -36,7 +38,12 @@ src/server/                ServerScriptService.MedicalServer
   ActionRunner.luau        server-side validation + timed treatments
   Inventory / Carry / Ragdoll / Dummies
   MedicalAPI.luau          public API for weapon/game code
-src/client/                StarterPlayerScripts.MedicalClient (menu, HUD, screen effects)
+  Weapons/WeaponService    gun tools, ammo, server hit validation, racks
+src/shared/Medical/Animations.luau  procedural poses for treatments and guns
+src/shared/Medical/ActionFx.luau    which animation + sounds each treatment uses
+src/shared/Medical/Sounds.luau      every sound id in one place
+src/shared/Weapons/        ReplicatedStorage.Weapons: Config (weapon stats) and Models (part-built guns)
+src/client/                StarterPlayerScripts.MedicalClient (menu, HUD, screen effects, Animator, Weapons/)
 src/character/             StarterCharacterScripts (disables default regen, client ragdoll state)
 tests/                     Lune test harness + scenario tests
 ```
@@ -67,6 +74,16 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 | I | Toggle the medical bag |
 | F2 | Toggle the debug panel (Studio / admins only, hidden by default) |
 
+**Guns** (equip with the hotbar, 1/2/3):
+
+| Input | Action |
+|---|---|
+| Left mouse | Fire (hold for automatic) |
+| Right mouse | Aim down sights |
+| R | Reload |
+| V | Switch fire mode (M4A1: auto / semi) |
+| Left Alt (hold) | Free the mouse cursor |
+
 The menu has a body diagram (colour = bleeding severity; TQ/FX/SP/IV/IO/Ox badges), action
 categories, the injuries on the selected part, a vitals monitor, airway and medication status, and the log.
 Vitals are only visible once measured, or live with a pulse oximeter / AED-X attached, as in KAT.
@@ -92,6 +109,27 @@ Other API: `isAlive`, `isConscious`, `getState`, `fullHeal`, `setMedicalLevel`, 
 
 Medical level: set the `MedicalLevel` attribute (0-2) on a Player, or map team names in `Config.TeamMedicalLevels`.
 Supply crates: tag any part with `MedicalSupply` to give it a restock prompt.
+
+## Guns, animations and sounds
+
+**Guns.** Players spawn with `WeaponConfig.Loadout` (M4A1 + M17). The standalone place also has racks for each gun
+and an ammo crate: tag any part `WeaponRack` and set a `WeaponId` attribute to make a rack (no attribute = ammo crate).
+The client only sends the shot origin and directions. The server checks the weapon, ammo, fire rate and origin,
+re-casts every ray and calls `MedicalService.applyDamage` with the limb that was hit and `"Bullet"` damage, so
+a leg hit bleeds and can fracture, chest hits can cause a pneumothorax, and so on. You can't shoot while unconscious,
+treating someone or carrying a patient, and arm fractures, tourniquets and pain slow reloads and widen spread.
+Stats (damage, RPM, magazine, spread, recoil, falloff) are in `src/shared/Weapons/Config.luau`.
+
+**Models.** `src/shared/Weapons/Models.luau` builds each gun from parts. To use your own mesh, return a Model with
+an invisible `Handle` part at the grip (barrel along -Z) and a `Muzzle` attachment at the barrel end.
+
+**Animations.** Roblox only plays uploaded animations owned by you or your group, so treatments and guns are
+animated in code: `client/Animator.luau` poses the character's joints from the data in `Animations.luau`, driven by
+character attributes the server sets (`MedAnim`, `GunHold`, `GunAim`, `GunAction`...), so every player sees them.
+Edit the angles there to change a pose; `ActionFx.luau` picks which motion and sounds each treatment uses.
+
+**Sounds.** All sound ids are in `src/shared/Medical/Sounds.luau` (free Creator Store sounds). Replace any
+id with your own `rbxassetid://` to change it.
 
 ## Development
 

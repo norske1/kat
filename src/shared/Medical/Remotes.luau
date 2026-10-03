@@ -17,6 +17,11 @@ Remotes.Names = {
 	"Progress", -- S->C ({ label, duration }?)
 	"Notify", -- S->C (text, kind)
 	"Inventory", -- S->C (items, level, debugAllowed)
+	"GunFire", -- C->S (tool, origin, directions)
+	"GunReload", -- C->S (tool)
+	"GunState", -- C->S (tool, aiming, pitch)
+	"GunFx", -- S->C (shooter, weaponId, origin, hits) shots by other players
+	"GunHit", -- S->C (kind) hit confirmation for the shooter
 }
 
 local FOLDER = "MedicalRemotes"

@@ -1,5 +1,6 @@
 --!nonstrict
 -- Carrying (fireman's carry) and dragging of incapacitated patients.
+local Sounds = require(game:GetService("ReplicatedStorage"):WaitForChild("Medical").Sounds)
 local MedicalService = require(script.Parent.MedicalService)
 
 local Carry = {}
@@ -62,6 +63,11 @@ function Carry.start(medic: Player, record, mode: string): (boolean, string?)
 	active[medic] = { record = record, weld = weld, mode = mode }
 	if medicChar then
 		medicChar:SetAttribute("MedCarryMultiplier", if mode == "Carry" then CARRY_SPEED else DRAG_SPEED)
+		medicChar:SetAttribute("MedCarryAnim", if mode == "Carry" then "Carry.Hold" else "Drag.Hold")
+		local humanoid = medicChar:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid:UnequipTools()
+		end
 	end
 	return true
 end
@@ -83,6 +89,7 @@ function Carry.drop(medic: Player)
 		local medicRoot = medic.Character and medic.Character:FindFirstChild("HumanoidRootPart")
 		if root and medicRoot then
 			root.CFrame = medicRoot.CFrame * CFrame.new(0, -1.5, -3) * CFrame.Angles(math.rad(-90), 0, 0)
+			Sounds.play("BodyFall", root)
 		end
 		pcall(function()
 			if root then
@@ -96,6 +103,7 @@ function Carry.drop(medic: Player)
 	end
 	if medic.Character then
 		medic.Character:SetAttribute("MedCarryMultiplier", nil)
+		medic.Character:SetAttribute("MedCarryAnim", nil)
 	end
 end
 

@@ -163,6 +163,23 @@ function Patient.isBleeding(p): boolean
 end
 
 -- Fully restores a patient (admin heal / respawn).
+-- 0..1 how much arm injuries hamper weapon handling (fractures, splints, tourniquets).
+function Patient.armImpairment(p): number
+	local total = 0
+	for _, name in { "LeftArm", "RightArm" } do
+		local part = p.parts[name]
+		if part.fracture > 0 then
+			total += if part.splint then 0.25 else 0.6
+		elseif part.fracture < 0 or part.splint then
+			total += 0.2
+		end
+		if part.tourniquet then
+			total += 0.3
+		end
+	end
+	return math.clamp(total, 0, 1)
+end
+
 function Patient.fullHeal(p)
 	local fresh = Patient.new({ bloodType = p.bloodType, seed = p.rng.state })
 	for k, v in fresh do

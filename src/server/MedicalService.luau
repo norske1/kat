@@ -8,6 +8,7 @@ local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Config = require(Medical.Config)
 local BodyParts = require(Medical.BodyParts)
 local Remotes = require(Medical.Remotes)
+local Sounds = require(Medical.Sounds)
 local Patient = require(Medical.Sim.Patient)
 local Simulation = require(Medical.Sim.Simulation)
 local Damage = require(Medical.Sim.Damage)
@@ -192,6 +193,11 @@ function MedicalService.applyDamage(model: Model, bodyPart: string?, amount: num
 		Damage.apply(record.state, part, amount, damageType)
 	else
 		Damage.applySpread(record.state, amount, damageType)
+	end
+	local now = os.clock()
+	if amount >= 5 and record.state.alive and record.state.conscious and now - (record.lastHurtSound or 0) > 0.7 then
+		record.lastHurtSound = now
+		Sounds.play("Hurt", record.model:FindFirstChild("Head"))
 	end
 end
 
@@ -409,6 +415,9 @@ end
 local function handleEvents(record: Record)
 	local events = Patient.drainEvents(record.state)
 	for _, e in events do
+		if e.name == "Unconscious" or e.name == "Died" then
+			Sounds.play("BodyFall", record.model:FindFirstChild("HumanoidRootPart"))
+		end
 		if e.name == "Unconscious" or e.name == "Died" or e.name == "CardiacArrest" then
 			if record.player then
 				MedicalService.onIncapacitated(record.player)

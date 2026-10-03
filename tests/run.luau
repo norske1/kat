@@ -424,6 +424,68 @@ test("random damage soak never errors", function()
 	end
 end)
 
+test("arm injuries impair weapon handling", function()
+	local p = Patient.new({ seed = 5 })
+	expect(Patient.armImpairment(p) == 0, "healthy arms")
+	p.parts.RightArm.fracture = 2
+	local broken = Patient.armImpairment(p)
+	expect(broken > 0.5, "fracture impairs: " .. broken)
+	p.parts.RightArm.splint = true
+	expect(Patient.armImpairment(p) < broken, "splint helps")
+	p.parts.LeftArm.tourniquet = 0
+	expect(Patient.armImpairment(p) <= 1, "clamped")
+	local snap = Snapshot.selfEffects(p)
+	expect(snap.armInjury == Patient.armImpairment(p), "exposed to client effects")
+end)
+
+test("every action has animation and sound fx", function()
+	local ActionFx = Harness.require("ActionFx")
+	local Animations = Harness.require("Animations")
+	local Sounds = Harness.require("Sounds")
+	for _, def in Actions.List do
+		local fx = ActionFx.get(def)
+		expect(Animations.Motions[fx.motion], def.id .. " motion " .. fx.motion)
+		for _, base in
+			{ ActionFx.base(fx, true, false), ActionFx.base(fx, false, true), ActionFx.base(fx, false, false) }
+		do
+			local pose = Animations.medical(base .. "." .. fx.motion, 0.37)
+			expect(pose, def.id .. " clip " .. base .. "." .. fx.motion)
+		end
+		for _, key in { "start", "loop", "finish" } do
+			local name = (fx :: any)[key]
+			expect(name == nil or Sounds.Library[name], def.id .. " sound " .. tostring(name))
+		end
+	end
+	expect(ActionFx.isShock("UseAED", "Shock delivered"), "shock detected")
+	expect(not ActionFx.isShock("UseAED", "No shock advised"), "no shock")
+end)
+
+test("animation sampling and weapon poses", function()
+	local Animations = Harness.require("Animations")
+	local cpr = Animations.Motions.Cpr
+	local a = Animations.sample(cpr, 0)
+	local b = Animations.sample(cpr, cpr.period)
+	expect(math.abs(a.Waist[1] - b.Waist[1]) < 1e-6, "loops seamlessly")
+	local mid = Animations.sample(cpr, 0.25)
+	expect(mid.Waist[1] < a.Waist[1], "compression leans down")
+	local _, full = Animations.medical("Kneel.Cpr", 0)
+	expect(full, "kneel is full body")
+	local _, upper = Animations.medical("Stand.Work", 0)
+	expect(not upper, "stand is upper body")
+	expect(Animations.medical("Nope.Work", 0) == nil, "unknown clip")
+	for hold, set in Animations.Gun do
+		local hip = Animations.gun(hold, 0, 0)
+		local aim = Animations.gun(hold, 1, 0)
+		expect(hip and math.abs(hip.RightShoulder[1] - set.hip.RightShoulder[1]) < 1e-6, hold .. " hip")
+		expect(aim and math.abs(aim.RightShoulder[1] - set.aim.RightShoulder[1]) < 1e-6, hold .. " aim")
+		local up = Animations.gun(hold, 1, 30)
+		expect(up and up.RightShoulder[1] > aim.RightShoulder[1], hold .. " pitch raises arms")
+		for action in Animations.GunActions do
+			expect(Animations.gun(hold, 0.5, -10, action, 0.5, 1), hold .. " " .. action)
+		end
+	end
+end)
+
 print(("\n%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	local process = require("@lune/process")

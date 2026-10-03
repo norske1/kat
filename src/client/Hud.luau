@@ -118,6 +118,11 @@ function Hud.init(screen: ScreenGui)
 	end)
 end
 
+-- True while a panel that needs the mouse cursor is open (weapons unlock the mouse).
+function Hud.wantsMouse(): boolean
+	return (bagFrame ~= nil and bagFrame.Visible) or (debugFrame ~= nil and debugFrame.Visible)
+end
+
 function Hud.toggleBag()
 	bagFrame.Visible = not bagFrame.Visible
 end

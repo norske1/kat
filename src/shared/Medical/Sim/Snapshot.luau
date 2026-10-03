@@ -10,6 +10,7 @@ local Circulation = require(script.Parent.Circulation)
 local Cardiac = require(script.Parent.Cardiac)
 local Pharmacy = require(script.Parent.Pharmacy)
 local Actions = require(script.Parent.Actions)
+local Patient = require(script.Parent.Patient)
 
 local Snapshot = {}
 
@@ -315,6 +316,7 @@ function Snapshot.selfEffects(p)
 		arrest = p.arrest ~= nil,
 		causes = p.unconsciousCauses,
 		opioid = p.effects.opioid,
+		armInjury = Patient.armImpairment(p),
 	}
 end
 

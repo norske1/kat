@@ -11,6 +11,8 @@ local Remotes = require(Medical.Remotes)
 local Menu = require(script.Parent.Menu)
 local Hud = require(script.Parent.Hud)
 local Effects = require(script.Parent.Effects)
+local Animator = require(script.Parent.Animator)
+local GunClient = require(script.Parent.Weapons.GunClient)
 
 local player = Players.LocalPlayer
 
@@ -24,6 +26,8 @@ screen.Parent = player:WaitForChild("PlayerGui")
 Effects.init(screen)
 Hud.init(screen)
 Menu.init(screen)
+Animator.init()
+GunClient.init(screen)
 
 if Config.HideDefaultHealthBar then
 	task.spawn(function()
@@ -44,6 +48,7 @@ Remotes.get("View").OnClientEvent:Connect(function(view)
 end)
 Remotes.get("Effects").OnClientEvent:Connect(function(data)
 	Effects.update(data)
+	GunClient.setMedical(data)
 end)
 Remotes.get("Progress").OnClientEvent:Connect(function(data)
 	Hud.setProgress(data)
