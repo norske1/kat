@@ -18,6 +18,8 @@ It is written from scratch in Luau. The mechanics follow the KAT/ACE design, but
 | Cardiac | Arrest on blood loss, hypoxia, brady/tachycardia, tension PTX, tamponade, overdose, transfusion reaction. VF/VT/PEA/asystole, arrest timer, CPR (slows the timer), AED and AED-X with manual shocks, reversible causes block ROSC, pericardiocentesis |
 | Pharmacy | 16g IV / FAST IO, saline/plasma/blood bags (all ABO/Rh types, compatibility, hemolytic reaction), and 18 medications with onset/peak/decay curves, dose stacking and overdoses. Naloxone and flumazenil reversal |
 | Monitoring | Manual pulse/BP/response checks, pulse oximeter, AED-X monitor with live ECG trace, ultrasound, blood type test |
+| Animations & sound | Every treatment has a procedural animation (kneel, bandage wrap, tourniquet, injection, CPR compressions, BVM, surgery, carry/drag holds) and sounds (bandage, ratchet, syringe, suction, AED charge/shock, body falls, pain) |
+| Guns | M4A1 rifle, M17 pistol, M870 shotgun built from parts, server-validated hitscan, hits become medical wounds on the exact limb, magazines/reloads, fire modes, recoil, spread, muzzle flash, tracers, impacts, weapon/ammo racks |
 | Gameplay | Unconsciousness with ragdoll, carry and drag, medic levels (0 non-medic, 1 medic, 2 doctor) gating treatments, loadouts and supply crates, triage tags, treatment log, screen effects (pain vignette, blur, desaturation, blackout) |
 
 ## Project layout
@@ -36,7 +38,12 @@ src/server/                ServerScriptService.MedicalServer
   ActionRunner.luau        server-side validation + timed treatments
   Inventory / Carry / Ragdoll / Dummies
   MedicalAPI.luau          public API for weapon/game code
-src/client/                StarterPlayerScripts.MedicalClient (menu, HUD, screen effects)
+  Weapons/WeaponService    gun tools, ammo, server hit validation, racks
+src/shared/Medical/Animations.luau  procedural poses for treatments and guns
+src/shared/Medical/ActionFx.luau    which animation + sounds each treatment uses
+src/shared/Medical/Sounds.luau      every sound id in one place
+src/shared/Weapons/        ReplicatedStorage.Weapons: Config (weapon stats) and Models (part-built guns)
+src/client/                StarterPlayerScripts.MedicalClient (menu, HUD, screen effects, Animator, Weapons/)
 src/character/             StarterCharacterScripts (disables default regen, client ragdoll state)
 tests/                     Lune test harness + scenario tests
 ```
@@ -67,6 +74,16 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 | I | Toggle the medical bag |
 | F2 | Toggle the debug panel (Studio / admins only, hidden by default) |
 
+**Guns** (equip with the hotbar, 1/2/3):
+
+| Input | Action |
+|---|---|
+| Left mouse | Fire (hold for automatic) |
+| Right mouse | Aim down sights |
+| R | Reload |
+| V | Switch fire mode (M4A1: auto / semi) |
+| Left Alt (hold) | Free the mouse cursor |
+
 The menu has a body diagram (colour = bleeding severity; TQ/FX/SP/IV/IO/Ox badges), action
 categories, the injuries on the selected part, a vitals monitor, airway and medication status, and the log.
 Vitals are only visible once measured, or live with a pulse oximeter / AED-X attached, as in KAT.
@@ -93,54 +110,57 @@ Other API: `isAlive`, `isConscious`, `getState`, `fullHeal`, `setMedicalLevel`, 
 Medical level: set the `MedicalLevel` attribute (0-2) on a Player, or map team names in `Config.TeamMedicalLevels`.
 Supply crates: tag any part with `MedicalSupply` to give it a restock prompt.
 
-## Optional weapon asset pack
+## Guns, animations and sounds
 
-This repo includes **FieldCarbine** and **ServicePistol**, two original, low-poly, editable Roblox
-Tools built from Parts. They have welded details, animated magazines/bolts, muzzle attachments, and
-Sound instances. The five original mono WAV effects are in `assets/weapons/`. These are **assets
-and a visual/audio preview**, not a shooting system: clicking does not create bullets, use ammo,
-or deal damage. Your weapon server code should call `MedicalAPI.damage(...)` on validated hits.
+**Guns.** Players spawn with `WeaponConfig.Loadout` (M4A1 + M17). The standalone place also has racks for each gun
+and an ammo crate: tag any part `WeaponRack` and set a `WeaponId` attribute to make a rack (no attribute = ammo crate).
+The client only sends the shot origin and directions. The server checks the weapon, ammo, fire rate and origin,
+re-casts every ray and calls `MedicalService.applyDamage` with the limb that was hit and `"Bullet"` damage, so
+a leg hit bleeds and can fracture, chest hits can cause a pneumothorax, and so on. You can't shoot while unconscious,
+treating someone or carrying a patient, and arm fractures, tourniquets and pain slow reloads and widen spread.
+Stats (damage, RPM, magazine, spread, recoil, falloff) are in `src/shared/Weapons/Config.luau`.
 
-After this change is merged, on your own Windows PC update the repo and sync it to Studio as usual:
+**Models.** `src/shared/Weapons/Models.luau` builds each gun from parts. To use your own mesh, return a Model with
+an invisible `Handle` part at the grip (barrel along -Z) and a `Muzzle` attachment at the barrel end.
 
-```powershell
-git pull
-rojo serve default.project.json
-```
+**Animations.** Roblox only plays uploaded animations owned by you or your group, so treatments and guns are
+animated in code: `client/Animator.luau` poses the character's joints from the data in `Animations.luau`, driven by
+character attributes the server sets (`MedAnim`, `GunHold`, `GunAim`, `GunAction`...), so every player sees them.
+Edit the angles there to change a pose; `ActionFx.luau` picks which motion and sounds each treatment uses.
 
-Connect the Rojo Studio plugin, then open **View → Command Bar** in Studio and run this **once in
-Edit mode** (not while playing) to create persistent, editable Tools in `StarterPack`:
+**Sounds.** All sound ids are in `src/shared/Medical/Sounds.luau` (free Creator Store sounds). Replace any
+id with your own `rbxassetid://` to change it.
+
+### Optional editable prop and sound pack
+
+`src/shared/Medical/WeaponAssets/Models.luau` also builds **FieldCarbine** and **ServicePistol**, two
+low-poly editable Tool props with welded details, moving magazines/bolts, muzzle attachments and Sound
+instances. These are *separate* from the M4A1/M17/M870 gameplay guns above: the optional props do
+not fire projectiles, consume ammo, or cause wounds. Keep them out of `StarterPack` during normal
+gameplay so players do not mistake them for functional guns.
+
+After this change is merged, run `git pull` and `rojo serve default.project.json` on your Windows PC,
+connect the Rojo Studio plugin, then run this **once in Edit mode** in **View → Command Bar**:
 
 ```lua
-local models = require(game.ReplicatedStorage.Medical.WeaponAssets.Models)
-models.createAll(game.StarterPack)
+require(game.ReplicatedStorage.Medical.WeaponAssets.Models).createAll(game.ServerStorage)
 ```
 
-The command is safe to rerun: it returns existing asset Tools without replacing edits. To rebuild
-from source, manually delete the two generated Tools first, then run it again. Press **Play** and
-equip one to preview: **left click** = recoil/slide + shot sound, **right mouse button** = aim,
-**R** = magazine/bolt reload animation. The preview script lives in `src/client/WeaponPreview.client.luau`
-and only responds to Tools with the `WeaponAsset` attribute. Remove or disable that script when
-your own weapon input/controller takes over.
+This creates editable props in `ServerStorage` and never overwrites existing edits. To preview one,
+**copy** it into `StarterPack` temporarily, press Play, then remove the copy when done. Left click
+plays visual recoil, right mouse aims, and R animates a reload; `WeaponPreview.client.luau` runs
+only for Tools marked `WeaponAsset`. The gameplay guns are marked `WeaponId` instead, so their
+controls continue to use the server-authoritative gun system. The optional animation controller
+can also be used directly via `require(game.ReplicatedStorage.Medical.WeaponAssets.Animations).new(tool)`.
 
-Audio starts silent because Roblox requires audio uploads in the experience owner/group's account.
-In Studio, import each WAV from `assets/weapons/` through **Asset Manager → Import** (or the
-Creator Dashboard); copy each new audio asset ID into the matching Sound's `SoundId` property as
-`rbxassetid://YOUR_ID`:
-
-| WAV file | Where to set SoundId |
-|---|---|
-| `carbine_fire.wav` | `StarterPack.FieldCarbine.Handle.Fire` |
-| `pistol_fire.wav` | `StarterPack.ServicePistol.Handle.Fire` |
-| `reload.wav` | both Tools' `Handle.Reload` |
-| `dry_fire.wav` | both Tools' `Handle.DryFire` |
-| `equip.wav` | both Tools' `Handle.Equip` |
-
-The animations are procedural local Tool-grip/Motor6D motion, not uploaded Roblox AnimationIds.
-For integration, use `require(game.ReplicatedStorage.Medical.WeaponAssets.Animations).new(tool)`;
-call `:equip()`, `:setAiming(true/false)`, `:fire()`, `:reload()`, and `:unequip()` from your
-controller. The preview calls these methods but does not replicate gunshot audio or implement
-server-side firing. Ensure uploaded audio is permitted for the experience before testing.
+The five original mono WAVs are in `assets/weapons/` and are silent until uploaded under the
+experience owner/group via Studio **Asset Manager → Import** or Creator Dashboard. Set the matching
+`SoundId` on each prop's `Handle.Fire`, `Handle.Reload`, `Handle.DryFire`, or `Handle.Equip` Sound.
+Use `carbine_fire.wav` for FieldCarbine, `pistol_fire.wav` for ServicePistol, and the matching
+`reload.wav`, `dry_fire.wav`, and `equip.wav` for either Tool. You can instead replace the
+`RifleShot`/`PistolShot`/`DryFire`/`Equip` IDs in `src/shared/Medical/Sounds.luau` to use those
+uploaded effects with the *functional* guns. Asset ownership and audio permissions must allow
+your experience to play the uploaded IDs.
 
 ## Development
 

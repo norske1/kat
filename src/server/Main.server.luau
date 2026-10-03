@@ -16,6 +16,7 @@ local ActionRunner = require(script.Parent.ActionRunner)
 local Carry = require(script.Parent.Carry)
 local Dummies = require(script.Parent.Dummies)
 local MedicalAPI = require(script.Parent.MedicalAPI)
+local WeaponService = require(script.Parent.Weapons.WeaponService)
 
 local lastRequest: { [Player]: number } = {}
 local function throttled(player: Player): boolean
@@ -177,3 +178,5 @@ if Config.SpawnTrainingDummies and (RunService:IsStudio() or Config.AllowDummies
 		end
 	end)
 end
+
+WeaponService.init()

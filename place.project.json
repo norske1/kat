@@ -3,28 +3,51 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "Medical": { "$path": "src/shared/Medical" }
+      "Medical": {
+        "$path": "src/shared/Medical"
+      },
+      "Weapons": {
+        "$path": "src/shared/Weapons"
+      }
     },
     "ServerScriptService": {
-      "MedicalServer": { "$path": "src/server" }
+      "MedicalServer": {
+        "$path": "src/server"
+      }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "MedicalClient": { "$path": "src/client" }
+        "MedicalClient": {
+          "$path": "src/client"
+        }
       },
       "StarterCharacterScripts": {
         "$path": "src/character"
       }
     },
     "Workspace": {
-      "$properties": { "FilteringEnabled": true },
+      "$properties": {
+        "FilteringEnabled": true
+      },
       "Baseplate": {
         "$className": "Part",
         "$properties": {
           "Anchored": true,
-          "Size": [512, 20, 512],
-          "Position": [0, -10, 0],
-          "Color": [0.39, 0.37, 0.38],
+          "Size": [
+            512,
+            20,
+            512
+          ],
+          "Position": [
+            0,
+            -10,
+            0
+          ],
+          "Color": [
+            0.39,
+            0.37,
+            0.38
+          ],
           "Material": "Concrete"
         }
       },
@@ -32,8 +55,16 @@
         "$className": "SpawnLocation",
         "$properties": {
           "Anchored": true,
-          "Size": [12, 1, 12],
-          "Position": [0, 0.5, 0],
+          "Size": [
+            12,
+            1,
+            12
+          ],
+          "Position": [
+            0,
+            0.5,
+            0
+          ],
           "Duration": 0
         }
       },
@@ -41,16 +72,163 @@
         "$className": "Part",
         "$properties": {
           "Anchored": true,
-          "Size": [4, 3, 3],
-          "Position": [12, 1.5, 0],
-          "Color": [0.85, 0.85, 0.85],
+          "Size": [
+            4,
+            3,
+            3
+          ],
+          "Position": [
+            12,
+            1.5,
+            0
+          ],
+          "Color": [
+            0.85,
+            0.85,
+            0.85
+          ],
           "Material": "SmoothPlastic",
-          "Tags": ["MedicalSupply"]
+          "Tags": [
+            "MedicalSupply"
+          ]
+        }
+      },
+      "WeaponRackM4A1": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [
+            3,
+            2,
+            4
+          ],
+          "Position": [
+            -12,
+            1,
+            -6
+          ],
+          "Color": [
+            0.35,
+            0.3,
+            0.22
+          ],
+          "Material": "WoodPlanks",
+          "Tags": [
+            "WeaponRack"
+          ]
+        },
+        "$attributes": {
+          "WeaponId": "M4A1"
+        }
+      },
+      "WeaponRackM17": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [
+            3,
+            2,
+            4
+          ],
+          "Position": [
+            -12,
+            1,
+            0
+          ],
+          "Color": [
+            0.35,
+            0.3,
+            0.22
+          ],
+          "Material": "WoodPlanks",
+          "Tags": [
+            "WeaponRack"
+          ]
+        },
+        "$attributes": {
+          "WeaponId": "M17"
+        }
+      },
+      "WeaponRackM870": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [
+            3,
+            2,
+            4
+          ],
+          "Position": [
+            -12,
+            1,
+            6
+          ],
+          "Color": [
+            0.35,
+            0.3,
+            0.22
+          ],
+          "Material": "WoodPlanks",
+          "Tags": [
+            "WeaponRack"
+          ]
+        },
+        "$attributes": {
+          "WeaponId": "M870"
+        }
+      },
+      "AmmoCrate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [
+            3,
+            2,
+            3
+          ],
+          "Position": [
+            -12,
+            1,
+            12
+          ],
+          "Color": [
+            0.25,
+            0.32,
+            0.2
+          ],
+          "Material": "Metal",
+          "Tags": [
+            "WeaponRack"
+          ]
+        }
+      },
+      "TargetWall": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [
+            30,
+            12,
+            2
+          ],
+          "Position": [
+            0,
+            6,
+            -70
+          ],
+          "Color": [
+            0.6,
+            0.55,
+            0.5
+          ],
+          "Material": "Concrete"
         }
       }
     },
     "Lighting": {
-      "$properties": { "ClockTime": 14 }
+      "$properties": {
+        "ClockTime": 14
+      }
     }
   }
 }

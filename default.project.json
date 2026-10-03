@@ -3,14 +3,23 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "Medical": { "$path": "src/shared/Medical" }
+      "Medical": {
+        "$path": "src/shared/Medical"
+      },
+      "Weapons": {
+        "$path": "src/shared/Weapons"
+      }
     },
     "ServerScriptService": {
-      "MedicalServer": { "$path": "src/server" }
+      "MedicalServer": {
+        "$path": "src/server"
+      }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "MedicalClient": { "$path": "src/client" }
+        "MedicalClient": {
+          "$path": "src/client"
+        }
       },
       "StarterCharacterScripts": {
         "$path": "src/character"

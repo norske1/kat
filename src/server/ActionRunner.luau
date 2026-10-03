@@ -7,6 +7,8 @@ local BodyParts = require(Medical.BodyParts)
 local Items = require(Medical.Items)
 local Remotes = require(Medical.Remotes)
 local Actions = require(Medical.Sim.Actions)
+local ActionFx = require(Medical.ActionFx)
+local Sounds = require(Medical.Sounds)
 local MedicalService = require(script.Parent.MedicalService)
 local Inventory = require(script.Parent.Inventory)
 local Carry = require(script.Parent.Carry)
@@ -74,7 +76,22 @@ function ActionRunner.cancel(player: Player)
 	end
 end
 
+local function setClip(player: Player, clip: string?)
+	local char = player.Character
+	if not char or char:GetAttribute("MedAnim") == clip then
+		return
+	end
+	char:SetAttribute("MedAnim", clip)
+	char:SetAttribute("MedAnimT", if clip then workspace:GetServerTimeNow() else nil)
+end
+
+local function patientDown(record): boolean
+	local s = record.state
+	return not s.alive or not s.conscious or record.model:GetAttribute("MedRagdoll") == true
+end
+
 local function finish(player: Player, job)
+	setClip(player, nil)
 	if running[player] == job then
 		running[player] = nil
 	end
@@ -101,6 +118,20 @@ local function runOnce(player: Player, record, def, part: string, job): boolean
 	local label = def.name .. (if record.player == player then "" else " - " .. BodyParts.DisplayName[part])
 	progressRemote:FireClient(player, { label = label, duration = duration, repeating = def.cpr == true })
 
+	local fx = ActionFx.get(def)
+	local medicChar = player.Character
+	local medicHumanoid = medicChar and medicChar:FindFirstChildOfClass("Humanoid")
+	if medicHumanoid then
+		medicHumanoid:UnequipTools()
+	end
+	local isSelf = record.player == player
+	setClip(player, ActionFx.base(fx, isSelf, patientDown(record)) .. "." .. fx.motion)
+	local soundAt = MedicalService.rootOf(record) or (medicChar and medicChar:FindFirstChild("HumanoidRootPart"))
+	if fx.start then
+		Sounds.play(fx.start, soundAt)
+	end
+	local nextLoop = fx.interval or math.huge
+
 	local elapsed = 0
 	while elapsed < duration do
 		elapsed += task.wait(0.1)
@@ -118,6 +149,10 @@ local function runOnce(player: Player, record, def, part: string, job): boolean
 		if startPos and pos and (pos - startPos).Magnitude > Config.CancelMoveDistance then
 			MedicalService.notify(player, "Treatment interrupted - you moved", "error")
 			return false
+		end
+		if fx.loop and fx.interval and elapsed >= nextLoop then
+			Sounds.play(fx.loop, soundAt)
+			nextLoop += fx.interval
 		end
 	end
 
@@ -145,6 +180,11 @@ local function runOnce(player: Player, record, def, part: string, job): boolean
 		warn("[Medical] action " .. def.id .. " failed: " .. tostring(result))
 		MedicalService.notify(player, "Treatment failed", "error")
 		return false
+	end
+	if ActionFx.isShock(def.id, result) then
+		Sounds.play("AedShock", soundAt)
+	elseif fx.finish then
+		Sounds.play(fx.finish, soundAt)
 	end
 	if def.refund then
 		for _, refundId in def.refund do
