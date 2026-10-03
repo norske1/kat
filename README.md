@@ -93,6 +93,55 @@ Other API: `isAlive`, `isConscious`, `getState`, `fullHeal`, `setMedicalLevel`, 
 Medical level: set the `MedicalLevel` attribute (0-2) on a Player, or map team names in `Config.TeamMedicalLevels`.
 Supply crates: tag any part with `MedicalSupply` to give it a restock prompt.
 
+## Optional weapon asset pack
+
+This repo includes **FieldCarbine** and **ServicePistol**, two original, low-poly, editable Roblox
+Tools built from Parts. They have welded details, animated magazines/bolts, muzzle attachments, and
+Sound instances. The five original mono WAV effects are in `assets/weapons/`. These are **assets
+and a visual/audio preview**, not a shooting system: clicking does not create bullets, use ammo,
+or deal damage. Your weapon server code should call `MedicalAPI.damage(...)` on validated hits.
+
+On your own Windows PC, update this repo and sync it to Studio as usual:
+
+```powershell
+git pull
+rojo serve default.project.json
+```
+
+Connect the Rojo Studio plugin, then open **View → Command Bar** in Studio and run this **once in
+Edit mode** (not while playing) to create persistent, editable Tools in `StarterPack`:
+
+```lua
+local models = require(game.ReplicatedStorage.Medical.WeaponAssets.Models)
+models.createAll(game.StarterPack)
+```
+
+The command is safe to rerun: it returns existing asset Tools without replacing edits. To rebuild
+from source, manually delete the two generated Tools first, then run it again. Press **Play** and
+equip one to preview: **left click** = recoil/slide + shot sound, **right mouse button** = aim,
+**R** = magazine/bolt reload animation. The preview script lives in `src/client/WeaponPreview.client.luau`
+and only responds to Tools with the `WeaponAsset` attribute. Remove or disable that script when
+your own weapon input/controller takes over.
+
+Audio starts silent because Roblox requires audio uploads in the experience owner/group's account.
+In Studio, import each WAV from `assets/weapons/` through **Asset Manager → Import** (or the
+Creator Dashboard); copy each new audio asset ID into the matching Sound's `SoundId` property as
+`rbxassetid://YOUR_ID`:
+
+| WAV file | Where to set SoundId |
+|---|---|
+| `carbine_fire.wav` | `StarterPack.FieldCarbine.Handle.Fire` |
+| `pistol_fire.wav` | `StarterPack.ServicePistol.Handle.Fire` |
+| `reload.wav` | both Tools' `Handle.Reload` |
+| `dry_fire.wav` | both Tools' `Handle.DryFire` |
+| `equip.wav` | both Tools' `Handle.Equip` |
+
+The animations are procedural local Tool-grip/Motor6D motion, not uploaded Roblox AnimationIds.
+For integration, use `require(game.ReplicatedStorage.Medical.WeaponAssets.Animations).new(tool)`;
+call `:equip()`, `:setAiming(true/false)`, `:fire()`, `:reload()`, and `:unequip()` from your
+controller. The preview calls these methods but does not replicate gunshot audio or implement
+server-side firing. Ensure uploaded audio is permitted for the experience before testing.
+
 ## Development
 
 ```bash
