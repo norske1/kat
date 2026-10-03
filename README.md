@@ -65,6 +65,7 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 | X | Cancel the current treatment (also stops repeating CPR) |
 | G | Drop a carried / dragged patient |
 | I | Toggle the medical bag |
+| F2 | Toggle the debug panel (Studio / admins only, hidden by default) |
 
 The menu has a body diagram (colour = bleeding severity; TQ/FX/SP/IV/IO/Ox badges), action
 categories, the injuries on the selected part, a vitals monitor, airway and medication status, and the log.

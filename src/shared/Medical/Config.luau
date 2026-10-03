@@ -10,6 +10,7 @@ Config.MaxTreatmentDistance = 10 -- studs
 Config.CancelMoveDistance = 5 -- medic moving this far from start cancels the action
 Config.SelfMenuKey = Enum.KeyCode.H
 Config.DropCarryKey = Enum.KeyCode.G
+Config.DebugToggleKey = Enum.KeyCode.F2
 Config.Hardcore = false -- hides thorax injuries / fractures until diagnosed
 Config.InfiniteSupplies = false
 Config.SpawnTrainingDummies = true -- spawns five training casualties near spawn (Studio only unless AllowDummiesInLive)

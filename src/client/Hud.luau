@@ -13,7 +13,7 @@ local progressFrame, progressFill, progressLabel
 local progressJob = nil
 local toastHolder
 local bagFrame, bagList, bagTitle
-local debugFrame
+local debugFrame, debugButton
 
 local LEVEL_NAMES = { [0] = "Non-medic", [1] = "Medic", [2] = "Doctor" }
 
@@ -162,10 +162,20 @@ function Hud.setDebug(allowed: boolean)
 		Position = UDim2.new(0, 10, 0.3, 0),
 		BackgroundColor3 = T.Background,
 		BackgroundTransparency = 0.1,
+		Visible = false,
 		ZIndex = 30,
 		Parent = screen,
 	}, { Ui.corner(6), Ui.padding(6), Ui.list(3) })
-	Ui.label({ Text = "Medical debug", Font = T.FontBold, ZIndex = 31, Parent = debugFrame })
+	Ui.label({ Text = "Medical debug [F2]", Font = T.FontBold, ZIndex = 31, Parent = debugFrame })
+	debugButton = Ui.button({
+		Text = "Debug [F2]",
+		Size = UDim2.new(0, 130, 0, 30),
+		Position = UDim2.new(1, -140, 1, -180),
+		BackgroundColor3 = T.Background,
+		ZIndex = 30,
+		Parent = screen,
+	})
+	debugButton.Activated:Connect(Hud.toggleDebug)
 	local debugRemote = Remotes.get("Debug")
 	local buttons = {
 		{ "Shot: left leg", "hurt", "LeftLeg", 40, "Bullet" },
@@ -196,6 +206,13 @@ function Hud.setDebug(allowed: boolean)
 		btn.Activated:Connect(function()
 			debugRemote:FireServer(b[2], b[3], b[4], b[5])
 		end)
+	end
+end
+
+function Hud.toggleDebug()
+	if debugFrame then
+		debugFrame.Visible = not debugFrame.Visible
+		debugButton.BackgroundColor3 = if debugFrame.Visible then T.Accent else T.Background
 	end
 end
 

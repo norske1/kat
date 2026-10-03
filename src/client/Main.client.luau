@@ -72,6 +72,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		Remotes.get("DropCarry"):FireServer()
 	elseif key == Enum.KeyCode.I then
 		Hud.toggleBag()
+	elseif key == Config.DebugToggleKey then
+		Hud.toggleDebug()
 	elseif key == Enum.KeyCode.Escape and Menu.isOpen() then
 		Menu.requestClose()
 	end
