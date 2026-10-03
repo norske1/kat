@@ -1,0 +1,20 @@
+{
+  "name": "KATMedical",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Medical": { "$path": "src/shared/Medical" }
+    },
+    "ServerScriptService": {
+      "MedicalServer": { "$path": "src/server" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "MedicalClient": { "$path": "src/client" }
+      },
+      "StarterCharacterScripts": {
+        "$path": "src/character"
+      }
+    }
+  }
+}

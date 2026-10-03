@@ -1,0 +1,56 @@
+{
+  "name": "KATMedicalPlace",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Medical": { "$path": "src/shared/Medical" }
+    },
+    "ServerScriptService": {
+      "MedicalServer": { "$path": "src/server" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "MedicalClient": { "$path": "src/client" }
+      },
+      "StarterCharacterScripts": {
+        "$path": "src/character"
+      }
+    },
+    "Workspace": {
+      "$properties": { "FilteringEnabled": true },
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [512, 20, 512],
+          "Position": [0, -10, 0],
+          "Color": [0.39, 0.37, 0.38],
+          "Material": "Concrete"
+        }
+      },
+      "SpawnLocation": {
+        "$className": "SpawnLocation",
+        "$properties": {
+          "Anchored": true,
+          "Size": [12, 1, 12],
+          "Position": [0, 0.5, 0],
+          "Duration": 0
+        }
+      },
+      "MedicalSupplyCrate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [4, 3, 3],
+          "Position": [12, 1.5, 0],
+          "Color": [0.85, 0.85, 0.85],
+          "Material": "SmoothPlastic",
+          "Tags": ["MedicalSupply"]
+        }
+      }
+    },
+    "Lighting": {
+      "$properties": { "ClockTime": 14 }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+-- Replaces Roblox's default health regeneration script. Health is driven by the medical system.
