@@ -131,6 +131,37 @@ Edit the angles there to change a pose; `ActionFx.luau` picks which motion and s
 **Sounds.** All sound ids are in `src/shared/Medical/Sounds.luau` (free Creator Store sounds). Replace any
 id with your own `rbxassetid://` to change it.
 
+### Optional editable prop and sound pack
+
+`src/shared/Medical/WeaponAssets/Models.luau` also builds **FieldCarbine** and **ServicePistol**, two
+low-poly editable Tool props with welded details, moving magazines/bolts, muzzle attachments and Sound
+instances. These are *separate* from the M4A1/M17/M870 gameplay guns above: the optional props do
+not fire projectiles, consume ammo, or cause wounds. Keep them out of `StarterPack` during normal
+gameplay so players do not mistake them for functional guns.
+
+After this change is merged, run `git pull` and `rojo serve default.project.json` on your Windows PC,
+connect the Rojo Studio plugin, then run this **once in Edit mode** in **View → Command Bar**:
+
+```lua
+require(game.ReplicatedStorage.Medical.WeaponAssets.Models).createAll(game.ServerStorage)
+```
+
+This creates editable props in `ServerStorage` and never overwrites existing edits. To preview one,
+**copy** it into `StarterPack` temporarily, press Play, then remove the copy when done. Left click
+plays visual recoil, right mouse aims, and R animates a reload; `WeaponPreview.client.luau` runs
+only for Tools marked `WeaponAsset`. The gameplay guns are marked `WeaponId` instead, so their
+controls continue to use the server-authoritative gun system. The optional animation controller
+can also be used directly via `require(game.ReplicatedStorage.Medical.WeaponAssets.Animations).new(tool)`.
+
+The five original mono WAVs are in `assets/weapons/` and are silent until uploaded under the
+experience owner/group via Studio **Asset Manager → Import** or Creator Dashboard. Set the matching
+`SoundId` on each prop's `Handle.Fire`, `Handle.Reload`, `Handle.DryFire`, or `Handle.Equip` Sound.
+Use `carbine_fire.wav` for FieldCarbine, `pistol_fire.wav` for ServicePistol, and the matching
+`reload.wav`, `dry_fire.wav`, and `equip.wav` for either Tool. You can instead replace the
+`RifleShot`/`PistolShot`/`DryFire`/`Equip` IDs in `src/shared/Medical/Sounds.luau` to use those
+uploaded effects with the *functional* guns. Asset ownership and audio permissions must allow
+your experience to play the uploaded IDs.
+
 ## Development
 
 ```bash
