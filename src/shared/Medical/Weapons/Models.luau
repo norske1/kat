@@ -13,6 +13,7 @@ local Models = {}
 
 export type MeshSpec = {
 	name: string, -- Model name inside a WeaponModels folder
+	aliases: { string }?, -- other accepted Model names
 	length: number, -- length along the barrel in studs
 	grip: Vector3, -- grip position as a fraction of the half-size of the bounding box (-1..1)
 	muzzle: Vector3, -- muzzle position, same units
@@ -284,6 +285,10 @@ end
 
 local function meshModel(kind: string, mesh: MeshSpec): Model?
 	local source = findSource(mesh.name)
+	local aliases: { string } = mesh.aliases or {}
+	for _, alias in aliases do
+		source = source or findSource(alias)
+	end
 	if not source then
 		return nil
 	end

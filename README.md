@@ -19,7 +19,7 @@ It is written from scratch in Luau. The mechanics follow the KAT/ACE design, but
 | Pharmacy | 16g IV / FAST IO, saline/plasma/blood bags (all ABO/Rh types, compatibility, hemolytic reaction), and 18 medications with onset/peak/decay curves, dose stacking and overdoses. Naloxone and flumazenil reversal |
 | Monitoring | Manual pulse/BP/response checks, pulse oximeter, AED-X monitor with live ECG trace, ultrasound, blood type test |
 | Animations & sound | Every treatment has a procedural animation (kneel, bandage wrap, tourniquet, injection, CPR compressions, BVM, surgery, carry/drag holds) and sounds (bandage, ratchet, syringe, suction, AED charge/shock, body falls, pain) |
-| Guns | M4A1 rifle, M17 pistol, M870 shotgun built from parts, server-validated hitscan, hits become medical wounds on the exact limb, magazines/reloads, fire modes, recoil, spread, muzzle flash, tracers, impacts, weapon/ammo racks |
+| Guns | M4A1 rifle, G17 pistol, M870 shotgun built from parts, server-validated hitscan, hits become medical wounds on the exact limb, magazines/reloads, fire modes, recoil, spread, muzzle flash, tracers, impacts, weapon/ammo racks |
 | Gameplay | Unconsciousness with ragdoll, carry and drag, medic levels (0 non-medic, 1 medic, 2 doctor) gating treatments, loadouts and supply crates, triage tags, treatment log, screen effects (pain vignette, blur, desaturation, blackout) |
 
 ## Project layout
@@ -125,13 +125,13 @@ a leg hit bleeds and can fracture, chest hits can cause a pneumothorax, and so o
 treating someone or carrying a patient, and arm fractures, tourniquets and pain slow reloads and widen spread.
 Stats (damage, RPM, magazine, spread, recoil, falloff) are in `src/shared/Medical/Weapons/Config.luau`.
 
-**Models.** The M4A1 and M17 use your imported meshes when they exist, otherwise the part-built models from
+**Models.** The M4A1 and G17 use your imported meshes when they exist, otherwise the part-built models from
 `src/shared/Medical/Weapons/Models.luau`. To import them (once, in Edit mode):
 
 1. In Studio: **File > Import 3D** (or Avatar tab > Import 3D), pick `assets/weapons/roblox/M4A1.obj`, click Import.
-2. Do the same for `assets/weapons/roblox/M17.obj`.
+2. Do the same for `assets/weapons/roblox/G17.obj`.
 3. In ServerStorage, insert a Folder named `WeaponModels`. Drag both imported models into it and rename them
-   exactly `M4A1` and `M17`.
+   exactly `M4A1` and `G17` (`M17` also works).
 4. Press Play.
 
 The files in `assets/weapons/roblox/` are your Blender exports converted by `tools/convert_weapon_obj.py`: barrel
@@ -163,7 +163,7 @@ id with your own `rbxassetid://` to change it.
 
 `src/shared/Medical/WeaponAssets/Models.luau` also builds **FieldCarbine** and **ServicePistol**, two
 low-poly editable Tool props with welded details, moving magazines/bolts, muzzle attachments and Sound
-instances. These are *separate* from the M4A1/M17/M870 gameplay guns above: the optional props do
+instances. These are *separate* from the M4A1/G17/M870 gameplay guns above: the optional props do
 not fire projectiles, consume ammo, or cause wounds. Keep them out of `StarterPack` during normal
 gameplay so players do not mistake them for functional guns.
 

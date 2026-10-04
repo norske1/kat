@@ -4,10 +4,10 @@
 local WeaponConfig = {}
 
 WeaponConfig.GiveOnSpawn = false -- true: give WeaponConfig.Loadout to every player when they spawn
-WeaponConfig.Loadout = { "M4A1", "M17" }
+WeaponConfig.Loadout = { "M4A1", "G17" }
 WeaponConfig.AutoSpawnLocker = true -- build a weapon locker next to the spawn if no part is tagged "WeaponLocker"
 WeaponConfig.LockerReach = 10 -- studs: how close you must be to click a locker item
-WeaponConfig.LockerItems = { "M4A1", "M870", "M17", "Ammo" } -- top shelf to bottom; "Ammo" is a resupply box
+WeaponConfig.LockerItems = { "M4A1", "M870", "G17", "Ammo" } -- top shelf to bottom; "Ammo" is a resupply box
 WeaponConfig.FriendlyFire = true -- false: players on the same (non-neutral) team can't hurt each other
 WeaponConfig.DamageNonMedical = true -- also damage humanoids not managed by the medical system
 WeaponConfig.MaxOriginDistance = 8 -- anti-cheat: shot origin must be this close to the shooter's head
@@ -84,14 +84,15 @@ WeaponConfig.Weapons = {
 		recoil = { vertical = 0.9, horizontal = 0.35, kick = 0.6 },
 		fireSound = "RifleShot",
 	},
-	M17 = {
-		id = "M17",
-		name = "M17",
+	G17 = {
+		id = "G17",
+		name = "G17",
 		hold = "Pistol",
 		model = "Pistol",
-		-- assets/weapons/roblox/M17.obj (or the original Blender export) imported as WeaponModels.M17
+		-- assets/weapons/roblox/G17.obj (or the original Blender export) imported as WeaponModels.G17
 		mesh = {
-			name = "M17",
+			name = "G17",
+			aliases = { "M17" }, -- older name of the imported model
 			length = 0.93,
 			grip = Vector3.new(0, -0.2421, 0.6115),
 			muzzle = Vector3.new(0, 0.6685, -0.9991),
