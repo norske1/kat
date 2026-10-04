@@ -83,8 +83,8 @@ end
 function Sounds.playAt(name: string, position: Vector3, volumeScale: number?): Sound?
 	local attachment = Instance.new("Attachment")
 	attachment.Name = "SfxPoint"
-	attachment.WorldPosition = position
 	attachment.Parent = workspace.Terrain
+	attachment.WorldPosition = position
 	game:GetService("Debris"):AddItem(attachment, 8)
 	return Sounds.play(name, attachment, volumeScale)
 end

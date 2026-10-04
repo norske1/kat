@@ -5,9 +5,6 @@
     "ReplicatedStorage": {
       "Medical": {
         "$path": "src/shared/Medical"
-      },
-      "Weapons": {
-        "$path": "src/shared/Weapons"
       }
     },
     "ServerScriptService": {

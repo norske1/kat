@@ -16,7 +16,6 @@ local ActionRunner = require(script.Parent.ActionRunner)
 local Carry = require(script.Parent.Carry)
 local Dummies = require(script.Parent.Dummies)
 local MedicalAPI = require(script.Parent.MedicalAPI)
-local WeaponService = require(script.Parent.Weapons.WeaponService)
 
 local lastRequest: { [Player]: number } = {}
 local function throttled(player: Player): boolean
@@ -179,4 +178,11 @@ if Config.SpawnTrainingDummies and (RunService:IsStudio() or Config.AllowDummies
 	end)
 end
 
-WeaponService.init()
+-- Guns are optional: a failure there must not take the medical system down with it.
+local weaponsOk, weaponsErr = pcall(function()
+	require(script.Parent.Weapons.WeaponService).init()
+end)
+if not weaponsOk then
+	warn("[KATMedical] weapon system failed to start: " .. tostring(weaponsErr))
+end
+print("[KATMedical] server started" .. (if weaponsOk then "" else " (weapons disabled)"))

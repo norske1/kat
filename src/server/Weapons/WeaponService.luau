@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Medical = ReplicatedStorage:WaitForChild("Medical")
-local Weapons = ReplicatedStorage:WaitForChild("Weapons")
+local Weapons = Medical:WaitForChild("Weapons")
 local WeaponConfig = require(Weapons.Config)
 local Models = require(Weapons.Models)
 local Remotes = require(Medical.Remotes)

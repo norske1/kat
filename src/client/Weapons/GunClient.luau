@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Medical = ReplicatedStorage:WaitForChild("Medical")
-local Weapons = ReplicatedStorage:WaitForChild("Weapons")
+local Weapons = Medical:WaitForChild("Weapons")
 local WeaponConfig = require(Weapons.Config)
 local Remotes = require(Medical.Remotes)
 local Sounds = require(Medical.Sounds)

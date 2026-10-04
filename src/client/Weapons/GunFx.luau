@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Medical = ReplicatedStorage:WaitForChild("Medical")
-local Weapons = ReplicatedStorage:WaitForChild("Weapons")
+local Weapons = Medical:WaitForChild("Weapons")
 local Sounds = require(Medical.Sounds)
 local WeaponConfig = require(Weapons.Config)
 

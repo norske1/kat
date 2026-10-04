@@ -42,7 +42,7 @@ src/server/                ServerScriptService.MedicalServer
 src/shared/Medical/Animations.luau  procedural poses for treatments and guns
 src/shared/Medical/ActionFx.luau    which animation + sounds each treatment uses
 src/shared/Medical/Sounds.luau      every sound id in one place
-src/shared/Weapons/        ReplicatedStorage.Weapons: Config (weapon stats) and Models (part-built guns)
+src/shared/Medical/Weapons/ ReplicatedStorage.Medical.Weapons: Config (weapon stats) and Models (part-built guns)
 src/client/                StarterPlayerScripts.MedicalClient (menu, HUD, screen effects, Animator, Weapons/)
 src/character/             StarterCharacterScripts (disables default regen, client ragdoll state)
 tests/                     Lune test harness + scenario tests
@@ -118,9 +118,9 @@ The client only sends the shot origin and directions. The server checks the weap
 re-casts every ray and calls `MedicalService.applyDamage` with the limb that was hit and `"Bullet"` damage, so
 a leg hit bleeds and can fracture, chest hits can cause a pneumothorax, and so on. You can't shoot while unconscious,
 treating someone or carrying a patient, and arm fractures, tourniquets and pain slow reloads and widen spread.
-Stats (damage, RPM, magazine, spread, recoil, falloff) are in `src/shared/Weapons/Config.luau`.
+Stats (damage, RPM, magazine, spread, recoil, falloff) are in `src/shared/Medical/Weapons/Config.luau`.
 
-**Models.** `src/shared/Weapons/Models.luau` builds each gun from parts. To use your own mesh, return a Model with
+**Models.** `src/shared/Medical/Weapons/Models.luau` builds each gun from parts. To use your own mesh, return a Model with
 an invisible `Handle` part at the grip (barrel along -Z) and a `Muzzle` attachment at the barrel end.
 
 **Animations.** Roblox only plays uploaded animations owned by you or your group, so treatments and guns are
