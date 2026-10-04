@@ -3,8 +3,11 @@
 -- (bleeding, fractures, pneumothorax...) on the exact body part that was hit.
 local WeaponConfig = {}
 
-WeaponConfig.GiveOnSpawn = true -- give WeaponConfig.Loadout to every player when they spawn
+WeaponConfig.GiveOnSpawn = false -- true: give WeaponConfig.Loadout to every player when they spawn
 WeaponConfig.Loadout = { "M4A1", "M17" }
+WeaponConfig.AutoSpawnLocker = true -- build a weapon locker next to the spawn if no part is tagged "WeaponLocker"
+WeaponConfig.LockerReach = 10 -- studs: how close you must be to click a locker item
+WeaponConfig.LockerItems = { "M4A1", "M870", "M17", "Ammo" } -- top shelf to bottom; "Ammo" is a resupply box
 WeaponConfig.FriendlyFire = true -- false: players on the same (non-neutral) team can't hurt each other
 WeaponConfig.DamageNonMedical = true -- also damage humanoids not managed by the medical system
 WeaponConfig.MaxOriginDistance = 8 -- anti-cheat: shot origin must be this close to the shooter's head
@@ -25,6 +28,7 @@ export type Weapon = {
 	name: string,
 	hold: string, -- animation set: "Rifle" or "Pistol"
 	model: string, -- Models builder: "Rifle", "Pistol", "Shotgun"
+	mesh: any?, -- Models.MeshSpec: imported mesh in a WeaponModels folder (falls back to `model`)
 	damage: number, -- per projectile, before range falloff
 	damageType: string, -- medical damage type
 	pellets: number,
@@ -54,6 +58,13 @@ WeaponConfig.Weapons = {
 		name = "M4A1",
 		hold = "Rifle",
 		model = "Rifle",
+		-- assets/weapons/roblox/M4A1.obj (or the original Blender export) imported as WeaponModels.M4A1
+		mesh = {
+			name = "M4A1",
+			length = 3.66,
+			grip = Vector3.new(0.0805, -0.1772, 0.3387),
+			muzzle = Vector3.new(0.0805, 0.4559, -1),
+		},
 		damage = 32,
 		damageType = "Bullet",
 		pellets = 1,
@@ -78,6 +89,13 @@ WeaponConfig.Weapons = {
 		name = "M17",
 		hold = "Pistol",
 		model = "Pistol",
+		-- assets/weapons/roblox/M17.obj (or the original Blender export) imported as WeaponModels.M17
+		mesh = {
+			name = "M17",
+			length = 0.93,
+			grip = Vector3.new(0, -0.2421, 0.6115),
+			muzzle = Vector3.new(0, 0.6685, -0.9991),
+		},
 		damage = 22,
 		damageType = "Bullet",
 		pellets = 1,

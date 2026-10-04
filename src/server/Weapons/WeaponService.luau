@@ -123,7 +123,7 @@ local function applyHit(shooter: Player, model: Model, part: Instance, damage: n
 	end
 end
 
-local function canUse(player: Player): boolean
+function WeaponService.canUse(player: Player): boolean
 	return not MedicalService.isIncapacitated(player)
 		and not ActionRunner.isBusy(player)
 		and not Carry.isCarrying(player)
@@ -143,7 +143,7 @@ function WeaponService.createTool(player: Player, weaponId: string): Tool?
 	tool.RequiresHandle = true
 	tool.Grip = CFrame.new()
 	tool:SetAttribute("WeaponId", def.id)
-	local model = Models.build(def.model)
+	local model = Models.build(def.model, def.mesh)
 	model.Name = "GunModel"
 	local handle = model.PrimaryPart :: BasePart
 	handle.Parent = tool
@@ -167,7 +167,7 @@ function WeaponService.createTool(player: Player, weaponId: string): Tool?
 		if not character or not character:IsA("Model") then
 			return
 		end
-		if not canUse(player) then
+		if not WeaponService.canUse(player) then
 			task.defer(function()
 				local humanoid = humanoidOf(player)
 				if humanoid then
@@ -247,6 +247,17 @@ function WeaponService.refill(player: Player)
 	end
 end
 
+-- Gives the weapon if needed and puts it in the player's hands.
+function WeaponService.equip(player: Player, weaponId: string): boolean
+	local given = WeaponService.give(player, weaponId)
+	local humanoid = humanoidOf(player)
+	local tool = ownedTool(player, weaponId)
+	if humanoid and tool and tool.Parent ~= player.Character then
+		humanoid:EquipTool(tool)
+	end
+	return given
+end
+
 function WeaponService.unequip(player: Player)
 	local humanoid = humanoidOf(player)
 	if humanoid then
@@ -273,7 +284,7 @@ local function onFire(player: Player, tool: any, origin: any, directions: any)
 		return
 	end
 	local def = st.def
-	if not canUse(player) or st.reloading or st.ammo <= 0 or #directions ~= def.pellets then
+	if not WeaponService.canUse(player) or st.reloading or st.ammo <= 0 or #directions ~= def.pellets then
 		return
 	end
 	local now = os.clock()
@@ -341,7 +352,7 @@ end
 
 local function onReload(player: Player, tool: any)
 	local st = equippedState(player, tool)
-	if not st or st.reloading or not canUse(player) then
+	if not st or st.reloading or not WeaponService.canUse(player) then
 		return
 	end
 	local def = st.def
@@ -439,7 +450,8 @@ local function setupRack(part: Instance)
 		local rack = part :: BasePart
 		local display = Models.display(
 			def.model,
-			rack.CFrame * CFrame.new(0, rack.Size.Y / 2 + 0.15, 0) * CFrame.Angles(0, math.rad(90), math.rad(90))
+			rack.CFrame * CFrame.new(0, rack.Size.Y / 2 + 0.15, 0) * CFrame.Angles(0, math.rad(90), math.rad(90)),
+			def.mesh
 		)
 		display.Name = "Display"
 		display.Parent = part
@@ -497,6 +509,8 @@ function WeaponService.init()
 			end
 		end
 	end)
+
+	require(script.Parent.Locker).init(WeaponService)
 
 	for _, part in CollectionService:GetTagged("WeaponRack") do
 		setupRack(part)

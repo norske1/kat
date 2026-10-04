@@ -16,6 +16,7 @@ local Menu = require(script.Parent.Parent.Menu)
 local Hud = require(script.Parent.Parent.Hud)
 local GunFx = require(script.Parent.GunFx)
 local GunHud = require(script.Parent.GunHud)
+local LockerClient = require(script.Parent.LockerClient)
 
 local GunClient = {}
 
@@ -363,6 +364,7 @@ function GunClient.init(screen: ScreenGui)
 	stateRemote = Remotes.get("GunState")
 	GunFx.init()
 	GunHud.init(screen)
+	LockerClient.init(screen)
 
 	Remotes.get("GunFx").OnClientEvent:Connect(function(shooter, weaponId, origin, hits)
 		if shooter == player or typeof(origin) ~= "Vector3" or typeof(hits) ~= "table" then
@@ -388,6 +390,9 @@ function GunClient.init(screen: ScreenGui)
 		end
 		local inputType = input.UserInputType
 		if inputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+			if LockerClient.hovering() then
+				return -- clicking a locker item, not shooting
+			end
 			triggerDown = true
 			dryClicked = false
 		elseif inputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonL2 then

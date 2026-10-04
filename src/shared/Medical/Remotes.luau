@@ -22,6 +22,7 @@ Remotes.Names = {
 	"GunState", -- C->S (tool, aiming, pitch)
 	"GunFx", -- S->C (shooter, weaponId, origin, hits) shots by other players
 	"GunHit", -- S->C (kind) hit confirmation for the shooter
+	"LockerTake", -- C->S (slot BasePart) take / equip a weapon from a locker
 }
 
 local FOLDER = "MedicalRemotes"

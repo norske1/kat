@@ -112,16 +112,33 @@ Supply crates: tag any part with `MedicalSupply` to give it a restock prompt.
 
 ## Guns, animations and sounds
 
-**Guns.** Players spawn with `WeaponConfig.Loadout` (M4A1 + M17). The standalone place also has racks for each gun
-and an ammo crate: tag any part `WeaponRack` and set a `WeaponId` attribute to make a rack (no attribute = ammo crate).
+**Weapon locker.** Guns come from a weapon locker: point at a gun in it (it lights up) and left-click (or tap) to
+equip it; click the ammo box to resupply. If no part is tagged `WeaponLocker`, one is built next to your
+SpawnLocation (`WeaponConfig.AutoSpawnLocker`). To place your own, insert a Part, add the tag `WeaponLocker`, and the
+locker is built standing on it, opening towards the part's front face. Shelf contents are
+`WeaponConfig.LockerItems`. Set `WeaponConfig.GiveOnSpawn = true` to also spawn with `WeaponConfig.Loadout`.
+Racks still work too: tag a part `WeaponRack` and set a `WeaponId` attribute (no attribute = ammo crate).
+
 The client only sends the shot origin and directions. The server checks the weapon, ammo, fire rate and origin,
 re-casts every ray and calls `MedicalService.applyDamage` with the limb that was hit and `"Bullet"` damage, so
 a leg hit bleeds and can fracture, chest hits can cause a pneumothorax, and so on. You can't shoot while unconscious,
 treating someone or carrying a patient, and arm fractures, tourniquets and pain slow reloads and widen spread.
 Stats (damage, RPM, magazine, spread, recoil, falloff) are in `src/shared/Medical/Weapons/Config.luau`.
 
-**Models.** `src/shared/Medical/Weapons/Models.luau` builds each gun from parts. To use your own mesh, return a Model with
-an invisible `Handle` part at the grip (barrel along -Z) and a `Muzzle` attachment at the barrel end.
+**Models.** The M4A1 and M17 use your imported meshes when they exist, otherwise the part-built models from
+`src/shared/Medical/Weapons/Models.luau`. To import them (once, in Edit mode):
+
+1. In Studio: **File > Import 3D** (or Avatar tab > Import 3D), pick `assets/weapons/roblox/M4A1.obj`, click Import.
+2. Do the same for `assets/weapons/roblox/M17.obj`.
+3. In ServerStorage, insert a Folder named `WeaponModels`. Drag both imported models into it and rename them
+   exactly `M4A1` and `M17`.
+4. Press Play.
+
+The files in `assets/weapons/roblox/` are your Blender exports converted by `tools/convert_weapon_obj.py`: barrel
+along -Z, one mesh per material and coloured in code. The original Blender OBJ files also work. Models are scaled to
+`mesh.length` and get a Handle at `mesh.grip` and a Muzzle at `mesh.muzzle` (in `Weapons/Config.luau`). If a gun
+faces backwards, set `yaw = 180` in its `mesh` entry. Any other Model in `WeaponModels` can be used the same way
+through a `mesh` entry.
 
 **Animations.** Roblox only plays uploaded animations owned by you or your group, so treatments and guns are
 animated in code: `client/Animator.luau` poses the character's joints from the data in `Animations.luau`, driven by
