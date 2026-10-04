@@ -140,6 +140,17 @@ along -Z, one mesh per material and coloured in code. The original Blender OBJ f
 faces backwards, set `yaw = 180` in its `mesh` entry. Any other Model in `WeaponModels` can be used the same way
 through a `mesh` entry.
 
+The Blender files have flat colours, not texture images, so imported models look grey in Studio. The game colours
+each part by name when it builds the gun (merged `Gunmetal`/`Polymer`/... meshes, or the Blender part names from
+an FBX/OBJ import). To see the colours in Edit mode too, paste this in View > Command Bar and press Enter:
+
+```lua
+require(game.ReplicatedStorage.Medical.Weapons.Models).paint(game.ServerStorage.WeaponModels)
+```
+
+For real textures, bake them in Blender to PNG images and add a `SurfaceAppearance` (ColorMap etc.) to each
+MeshPart. Parts with a SurfaceAppearance, or a colour you picked yourself, are left alone.
+
 **Animations.** Roblox only plays uploaded animations owned by you or your group, so treatments and guns are
 animated in code: `client/Animator.luau` poses the character's joints from the data in `Animations.luau`, driven by
 character attributes the server sets (`MedAnim`, `GunHold`, `GunAim`, `GunAction`...), so every player sees them.

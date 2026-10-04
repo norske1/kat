@@ -192,6 +192,73 @@ function Models.kinds(): { string }
 	return list
 end
 
+local DEFAULT_COLORS = { Color3.fromRGB(163, 162, 165), Color3.new(1, 1, 1) }
+
+local MeshMaterials = require(script.Parent.MeshMaterials)
+
+local function nameKey(name: string): string
+	local key = string.gsub(string.lower(name), "[%._ ]?%d+$", "")
+	return (string.gsub(key, "[^%w]", ""))
+end
+
+local function styleFor(name: string): { any }?
+	local known = MeshMaterials[nameKey(name)]
+	if known and PALETTE[known] then
+		return PALETTE[known]
+	end
+	local lower = string.lower(name)
+	for key, style in PALETTE do
+		if string.find(lower, string.lower(key), 1, true) then
+			return style
+		end
+	end
+	return nil
+end
+
+-- Colours a part from its name. Unless forced, keeps textures and colours you picked yourself.
+local function applyStyle(part: BasePart, force: boolean?): boolean
+	local style = styleFor(part.Name)
+	if not style then
+		return false
+	end
+	if not force and part:FindFirstChildWhichIsA("SurfaceAppearance") then
+		return false
+	end
+	local color: Color3 = (style :: { any })[1]
+	local material: Enum.Material = (style :: { any })[2]
+	local c = part.Color
+	local isDefault = false
+	for _, default in DEFAULT_COLORS do
+		if math.abs(c.R - default.R) + math.abs(c.G - default.G) + math.abs(c.B - default.B) < 0.03 then
+			isDefault = true
+		end
+	end
+	if force or isDefault then
+		part.Color = color
+	end
+	if force or part.Material == Enum.Material.Plastic then
+		part.Material = material
+	end
+	return true
+end
+
+-- Colours every part under `root` by name (Studio command bar, Edit mode):
+-- require(game.ReplicatedStorage.Medical.Weapons.Models).paint(game.ServerStorage.WeaponModels)
+function Models.paint(root: Instance): number
+	local count, missed = 0, 0
+	for _, d in root:GetDescendants() do
+		if d:IsA("BasePart") then
+			if applyStyle(d, true) then
+				count += 1
+			else
+				missed += 1
+			end
+		end
+	end
+	print(string.format("[Weapons] coloured %d parts (%d not recognised)", count, missed))
+	return count
+end
+
 local function findSource(name: string): Instance?
 	if not RunService:IsServer() then
 		return nil
@@ -280,11 +347,7 @@ local function meshModel(kind: string, mesh: MeshSpec): Model?
 		part.CanTouch = false
 		part.CanQuery = false
 		part.Massless = true
-		local style = PALETTE[string.match(part.Name, "^%a+") or ""]
-		if style then
-			part.Color = style[1]
-			part.Material = style[2]
-		end
+		applyStyle(part)
 		local weld = Instance.new("WeldConstraint")
 		weld.Part0 = handle
 		weld.Part1 = part
