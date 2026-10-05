@@ -374,7 +374,19 @@ function MedicalService.movementMultiplier(record: Record): number
 	if s.bloodVolume < Config.BloodClass2 then
 		mult *= 0.8
 	end
-	return mult * (record.model:GetAttribute("MedCarryMultiplier") or 1)
+	local move = record.model:GetAttribute("MoveSpeed") or 1
+	if mult < 0.95 then
+		move = math.min(move, 1) -- no sprinting while injured
+	end
+	return mult * move * (record.model:GetAttribute("MedCarryMultiplier") or 1)
+end
+
+-- Re-applies walk speed right away (sprint / crouch changes) instead of waiting for the next tick.
+function MedicalService.refreshMovement(model: Model)
+	local record = MedicalService.get(model)
+	if record and record.state.alive and record.state.conscious and not record.carrier then
+		record.humanoid.WalkSpeed = record.baseWalkSpeed * MedicalService.movementMultiplier(record)
+	end
 end
 
 local function applyToCharacter(record: Record)

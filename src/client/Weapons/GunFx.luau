@@ -1,18 +1,22 @@
 --!nonstrict
--- Client-side weapon visuals: muzzle flash, tracers, impacts, bullet holes, blood and whiz sounds.
+-- Client-side weapon visuals: muzzle flash, simulated bullets with tracers (same ballistics as the server),
+-- impacts, bullet holes, blood, supersonic cracks and gunshots delayed by the speed of sound.
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Weapons = Medical:WaitForChild("Weapons")
 local Sounds = require(Medical.Sounds)
 local WeaponConfig = require(Weapons.Config)
+local Ballistics = require(Weapons.Ballistics)
 
 local GunFx = {}
 
 local folder: Folder
 local holes: { BasePart } = {}
+local active = {} -- bullets in flight (visual)
+local stepBullets: (number) -> ()
 
 local function fxPart(props): Part
 	local part = Instance.new("Part")
@@ -34,6 +38,7 @@ function GunFx.init()
 	folder = Instance.new("Folder")
 	folder.Name = "WeaponFx"
 	folder.Parent = workspace
+	RunService.RenderStepped:Connect(stepBullets)
 end
 
 function GunFx.folder(): Folder
@@ -68,31 +73,6 @@ function GunFx.flash(muzzle: Attachment?)
 	})
 	Debris:AddItem(ball, 0.04)
 	Debris:AddItem(cone, 0.04)
-end
-
-function GunFx.tracer(from: Vector3, to: Vector3)
-	local distance = (to - from).Magnitude
-	if distance < 3 then
-		return
-	end
-	local length = math.min(10, distance * 0.4)
-	local look = CFrame.lookAt(from, to)
-	local tracer = fxPart({
-		Size = Vector3.new(0.06, 0.06, length),
-		CFrame = look * CFrame.new(0, 0, -length / 2),
-		Material = Enum.Material.Neon,
-		Color = Color3.fromRGB(255, 225, 150),
-		Transparency = 0.2,
-	})
-	local tween = TweenService:Create(
-		tracer,
-		TweenInfo.new(distance / WeaponConfig.TracerSpeed, Enum.EasingStyle.Linear),
-		{ CFrame = look * CFrame.new(0, 0, -(distance - length / 2)) }
-	)
-	tween.Completed:Connect(function()
-		tracer:Destroy()
-	end)
-	tween:Play()
 end
 
 local function burst(position: Vector3, normal: Vector3, color: Color3, count: number, flesh: boolean)
@@ -155,31 +135,108 @@ local function closestPoint(a: Vector3, b: Vector3, p: Vector3): Vector3
 	return a + ab * math.clamp((p - a):Dot(ab) / len2, 0, 1)
 end
 
--- Full shot: sound, flash, tracers and delayed impacts. hits = { { p, n?, k, c? } }
-function GunFx.shot(def, muzzle: Attachment?, origin: Vector3, hits, isLocal: boolean)
-	if muzzle then
+local function isCharacterPart(instance: Instance): boolean
+	local model = instance:FindFirstAncestorOfClass("Model")
+	while model do
+		if model:FindFirstChildOfClass("Humanoid") then
+			return true
+		end
+		model = model:FindFirstAncestorOfClass("Model")
+	end
+	return false
+end
+
+-- A shot: sound (delayed by distance for other players' shots), flash and one simulated bullet per pellet.
+function GunFx.fire(def, muzzle: Attachment?, origin: Vector3, directions, shooter: Model?, isLocal: boolean)
+	local camera = workspace.CurrentCamera
+	local listener = if camera then camera.CFrame.Position else origin
+	local delay = if isLocal then 0 else (origin - listener).Magnitude / WeaponConfig.SpeedOfSound
+	if delay < 0.03 and muzzle then
 		Sounds.play(def.fireSound, muzzle)
-	else
+	elseif delay < 0.03 then
 		Sounds.playAt(def.fireSound, origin)
+	else
+		task.delay(delay, Sounds.playAt, def.fireSound, origin)
 	end
 	GunFx.flash(muzzle)
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore: { Instance } = { folder }
+	if shooter then
+		table.insert(ignore, shooter)
+	end
+	if camera then
+		table.insert(ignore, camera)
+	end
+	params.FilterDescendantsInstances = ignore
 	local start = if muzzle then muzzle.WorldPosition else origin
-	local camera = workspace.CurrentCamera
-	local whizzed = isLocal
-	for _, hit in hits do
-		if typeof(hit) ~= "table" or typeof(hit.p) ~= "Vector3" then
-			continue
+	local speed = def.velocity or WeaponConfig.DefaultVelocity
+	for _, dir in directions do
+		if typeof(dir) == "Vector3" and dir.Magnitude > 0.5 then
+			table.insert(active, {
+				bullet = Ballistics.new(origin, dir.Unit, speed, def.range),
+				start = start,
+				params = params,
+				cracked = isLocal,
+				tracer = nil,
+			})
 		end
-		GunFx.tracer(start, hit.p)
-		local delay = (hit.p - start).Magnitude / WeaponConfig.TracerSpeed
-		task.delay(delay, GunFx.impact, hit.p, hit.n, hit.k or 0, hit.c)
-		if not whizzed and camera then
-			local point = closestPoint(origin, hit.p, camera.CFrame.Position)
-			local d = (point - camera.CFrame.Position).Magnitude
-			if d < 7 and (point - origin).Magnitude > 10 then
-				whizzed = true
+	end
+end
+
+local function remove(i: number)
+	local v = active[i]
+	if v.tracer then
+		v.tracer:Destroy()
+	end
+	active[i] = active[#active]
+	active[#active] = nil
+end
+
+function stepBullets(dt: number)
+	if #active == 0 then
+		return
+	end
+	local gravity = Vector3.new(0, -WeaponConfig.BulletGravity, 0)
+	local camera = workspace.CurrentCamera
+	local listener = if camera then camera.CFrame.Position else nil
+	for i = #active, 1, -1 do
+		local v = active[i]
+		local b = v.bullet
+		local from = if b.traveled == 0 then v.start else b.position
+		local hit, done = Ballistics.step(b, gravity, dt, function(f, d)
+			return workspace:Raycast(f, d, v.params)
+		end)
+		local to = b.position
+		local seg = to - from
+		local length = math.min(seg.Magnitude, 12)
+		if length > 0.05 then
+			if not v.tracer then
+				v.tracer = fxPart({
+					Size = Vector3.new(0.06, 0.06, length),
+					Material = Enum.Material.Neon,
+					Color = Color3.fromRGB(255, 225, 150),
+					Transparency = 0.2,
+				})
+			end
+			v.tracer.Size = Vector3.new(0.06, 0.06, length)
+			v.tracer.CFrame = CFrame.lookAt(to - seg.Unit * length, to) * CFrame.new(0, 0, -length / 2)
+		end
+		if not v.cracked and listener and b.traveled > 10 then
+			local point = closestPoint(from, to, listener)
+			if (point - listener).Magnitude < WeaponConfig.CrackDistance then
+				v.cracked = true
 				Sounds.playAt("Whiz", point)
 			end
+		end
+		if hit then
+			local instance = hit.Instance
+			local color = if instance:IsA("BasePart") and not instance:IsA("Terrain") then instance.Color else nil
+			GunFx.impact(hit.Position, hit.Normal, if isCharacterPart(instance) then 2 else 1, color)
+		end
+		if done or b.age > 4 then
+			remove(i)
 		end
 	end
 end

@@ -113,7 +113,7 @@ function GunHud.show(visible: boolean)
 end
 
 -- spread in degrees -> crosshair gap in pixels
-function GunHud.setSpread(spread: number, aiming: boolean)
+function GunHud.setSpread(spread: number, aiming: boolean, crosshairVisible: boolean?)
 	local camera = workspace.CurrentCamera
 	local fov = if camera then camera.FieldOfView else 70
 	local height = if camera then camera.ViewportSize.Y else 720
@@ -122,10 +122,11 @@ function GunHud.setSpread(spread: number, aiming: boolean)
 	bars.bottom.Position = UDim2.fromOffset(0, gap + 5)
 	bars.left.Position = UDim2.fromOffset(-gap - 5, 0)
 	bars.right.Position = UDim2.fromOffset(gap + 5, 0)
+	local visible = crosshairVisible ~= false
 	for _, b in bars do
-		b.Visible = not aiming
+		b.Visible = visible and not aiming
 	end
-	dot.Visible = true
+	dot.Visible = visible
 end
 
 function GunHud.setAmmo(name: string, ammo: number, reserve: number, mode: string, reloading: boolean)

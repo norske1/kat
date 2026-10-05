@@ -1,14 +1,17 @@
 --!nonstrict
--- Server side of the gun system: tools, ammo, validated hitscan shots and reloads.
+-- Server side of the gun system: tools, ammo, validated shots (simulated bullets with velocity and drop),
+-- reloads and movement stance (sprint / crouch / lean).
 -- Hits are turned into medical wounds on the body part that was hit (MedicalService.applyDamage).
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Weapons = Medical:WaitForChild("Weapons")
 local WeaponConfig = require(Weapons.Config)
 local Models = require(Weapons.Models)
+local Ballistics = require(Weapons.Ballistics)
 local Remotes = require(Medical.Remotes)
 local Sounds = require(Medical.Sounds)
 local Patient = require(Medical.Sim.Patient)
@@ -30,6 +33,7 @@ type ToolState = {
 }
 
 local tools: { [Tool]: ToolState } = {}
+local bullets = {} -- { bullet, def, player, character, params }
 local actionTokens: { [Model]: number } = {}
 
 local fxRemote = Remotes.get("GunFx")
@@ -278,6 +282,104 @@ local function equippedState(player: Player, tool: any): ToolState?
 	return st
 end
 
+-- Movement stance -----------------------------------------------------------------------------------
+local function updateMove(character: Model)
+	local mult = 1
+	if character:GetAttribute("MoveSprint") then
+		mult = WeaponConfig.SprintSpeed
+	elseif character:GetAttribute("MoveCrouch") then
+		mult = WeaponConfig.CrouchSpeed
+	end
+	if character:GetAttribute("GunAim") then
+		mult = math.min(mult, WeaponConfig.AimSpeed)
+	end
+	character:SetAttribute("MoveSpeed", mult)
+	MedicalService.refreshMovement(character)
+end
+
+local function setCrouch(character: Model, crouch: boolean)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	if (character:GetAttribute("MoveCrouch") == true) == crouch then
+		return
+	end
+	character:SetAttribute("MoveCrouch", crouch or nil)
+	if humanoid.RigType == Enum.HumanoidRigType.R15 then
+		local base = character:GetAttribute("BaseHipHeight")
+		if not base then
+			base = humanoid.HipHeight
+			character:SetAttribute("BaseHipHeight", base)
+		end
+		humanoid.HipHeight = if crouch then math.max(base - WeaponConfig.CrouchDrop, 0.3) else base
+	end
+end
+
+local function resetStance(character: Model?)
+	if not character then
+		return
+	end
+	local model = character :: Model
+	setCrouch(model, false)
+	model:SetAttribute("MoveSprint", nil)
+	model:SetAttribute("MoveLean", nil)
+	updateMove(model)
+end
+
+local function onStance(player: Player, crouch: any, sprint: any, lean: any)
+	local character = player.Character
+	if not character or typeof(lean) ~= "number" or lean ~= lean then
+		return
+	end
+	if MedicalService.isIncapacitated(player) or Carry.isCarrying(player) then
+		resetStance(character)
+		return
+	end
+	local sprinting = sprint == true and character:GetAttribute("GunAim") ~= true
+	setCrouch(character, crouch == true and not sprinting)
+	character:SetAttribute("MoveSprint", sprinting or nil)
+	local l = if sprinting then 0 else math.clamp(math.round(lean * 10) / 10, -1, 1)
+	character:SetAttribute("MoveLean", if l ~= 0 then l else nil)
+	updateMove(character)
+end
+
+-- Where the eyes are, including lean (the camera moves sideways while the body hitbox does not).
+local function eyePosition(character: Model, head: BasePart, params: RaycastParams): Vector3
+	local lean = character:GetAttribute("MoveLean") or 0
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if lean == 0 or not root then
+		return head.Position
+	end
+	local offset = (root :: BasePart).CFrame.RightVector * lean * WeaponConfig.LeanOffset
+	local hit = workspace:Raycast(head.Position, offset, params)
+	return if hit then hit.Position - offset.Unit * 0.2 else head.Position + offset
+end
+
+-- Bullets ------------------------------------------------------------------------------------------
+local function stepBullets(dt: number)
+	local gravity = Vector3.new(0, -WeaponConfig.BulletGravity, 0)
+	for i = #bullets, 1, -1 do
+		local b = bullets[i]
+		local hit, done = Ballistics.step(b.bullet, gravity, dt, function(from, delta)
+			return workspace:Raycast(from, delta, b.params)
+		end)
+		if hit then
+			local model = characterFromPart(hit.Instance)
+			if model and model ~= b.character then
+				applyHit(b.player, model, hit.Instance, WeaponConfig.damageAt(b.def, b.bullet.traveled), b.def)
+				if b.player.Parent then
+					hitRemote:FireClient(b.player, 2)
+				end
+			end
+		end
+		if done or b.bullet.age > 4 then
+			bullets[i] = bullets[#bullets]
+			bullets[#bullets] = nil
+		end
+	end
+end
+
 local function onFire(player: Player, tool: any, origin: any, directions: any)
 	local st = equippedState(player, tool)
 	if not st or typeof(origin) ~= "Vector3" or typeof(directions) ~= "table" then
@@ -302,44 +404,31 @@ local function onFire(player: Player, tool: any, origin: any, directions: any)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { character }
-	if workspace:Raycast(head.Position, origin - head.Position, params) then
-		origin = head.Position -- muzzle poking through a wall: shoot from the head instead
+	local eye = eyePosition(character, head, params)
+	if workspace:Raycast(eye, origin - eye, params) then
+		origin = eye -- muzzle poking through a wall: shoot from the eyes instead
 	end
 
 	st.ammo -= 1
 	st.nextShot = now + (60 / def.rpm) * WeaponConfig.RateTolerance
 	sync(tool, st)
 
-	local hits = {}
-	local hitFlesh = false
+	local speed = def.velocity or WeaponConfig.DefaultVelocity
+	local valid = {}
 	for i = 1, def.pellets do
 		local dir = directions[i]
-		if typeof(dir) ~= "Vector3" or dir.Magnitude < 0.5 then
-			hits[i] = { p = origin, k = 0 }
-			continue
-		end
-		dir = dir.Unit
-		local result = workspace:Raycast(origin, dir * def.range, params)
-		if result then
-			local model = characterFromPart(result.Instance)
-			local kind = 1
-			if model and model ~= character then
-				kind = 2
-				hitFlesh = true
-				applyHit(player, model, result.Instance, WeaponConfig.damageAt(def, result.Distance), def)
-			end
-			local color = if result.Instance:IsA("BasePart") and not result.Instance:IsA("Terrain")
-				then result.Instance.Color
-				else nil
-			hits[i] = { p = result.Position, n = result.Normal, k = kind, c = color }
-		else
-			hits[i] = { p = origin + dir * def.range, k = 0 }
+		if typeof(dir) == "Vector3" and dir.Magnitude >= 0.5 and dir == dir then
+			table.insert(valid, dir.Unit)
+			table.insert(bullets, {
+				bullet = Ballistics.new(origin, dir.Unit, speed, def.range),
+				def = def,
+				player = player,
+				character = character,
+				params = params,
+			})
 		end
 	end
-	fxRemote:FireAllClients(player, def.id, origin, hits)
-	if hitFlesh then
-		hitRemote:FireClient(player, 2)
-	end
+	fxRemote:FireAllClients(player, def.id, origin, valid)
 	if def.pumpTime then
 		task.delay(0.15, function()
 			if st.character == character and tool.Parent == character then
@@ -431,6 +520,7 @@ local function onState(player: Player, tool: any, aiming: any, pitch: any)
 	local character = player.Character
 	character:SetAttribute("GunAim", aiming == true)
 	character:SetAttribute("GunPitch", math.floor(math.clamp(pitch, -80, 80) + 0.5))
+	updateMove(character)
 end
 
 -- Racks / ammo crates ------------------------------------------------------------------------------
@@ -476,6 +566,8 @@ function WeaponService.init()
 	Remotes.get("GunFire").OnServerEvent:Connect(onFire)
 	Remotes.get("GunReload").OnServerEvent:Connect(onReload)
 	Remotes.get("GunState").OnServerEvent:Connect(onState)
+	Remotes.get("Stance").OnServerEvent:Connect(onStance)
+	RunService.Heartbeat:Connect(stepBullets)
 
 	local previous = MedicalService.onIncapacitated
 	MedicalService.onIncapacitated = function(player: Player)
@@ -483,6 +575,7 @@ function WeaponService.init()
 			previous(player)
 		end
 		WeaponService.unequip(player)
+		resetStance(player.Character)
 	end
 
 	local function onCharacter(player: Player)

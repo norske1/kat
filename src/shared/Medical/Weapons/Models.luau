@@ -17,6 +17,8 @@ export type MeshSpec = {
 	length: number, -- length along the barrel in studs
 	grip: Vector3, -- grip position as a fraction of the half-size of the bounding box (-1..1)
 	muzzle: Vector3, -- muzzle position, same units
+	aim: Vector3?, -- rear sight / optic (first-person aiming), same units
+	support: Vector3?, -- where the left hand holds the gun, same units
 	yaw: number?, -- extra turn in degrees if the import faces the wrong way (e.g. 180)
 }
 
@@ -178,6 +180,25 @@ local BUILDERS: { [string]: { PartSpec } } = {
 		{ name = "Bead", size = Vector3.new(0.04, 0.04, 0.04), cframe = CFrame.new(0, 0.38, -2.25) },
 	},
 }
+
+-- Sight line (first-person aiming) and support-hand position for the part-built guns.
+local AIM: { [string]: Vector3 } = {
+	Rifle = Vector3.new(0, 0.46, -0.15),
+	Pistol = Vector3.new(0, 0.345, 0.05),
+	Shotgun = Vector3.new(0, 0.39, -0.25),
+}
+local SUPPORT: { [string]: Vector3 } = {
+	Rifle = Vector3.new(0, 0.1, -1.25),
+	Pistol = Vector3.new(-0.12, -0.12, 0.07),
+	Shotgun = Vector3.new(0, 0.06, -1.05),
+}
+
+local function attach(handle: BasePart, name: string, position: Vector3)
+	local attachment = Instance.new("Attachment")
+	attachment.Name = name
+	attachment.Position = position
+	attachment.Parent = handle
+end
 
 local MUZZLE: { [string]: Vector3 } = {
 	Rifle = Vector3.new(0, 0.25, -2.48),
@@ -358,10 +379,20 @@ local function meshModel(kind: string, mesh: MeshSpec): Model?
 		weld.Part1 = part
 		weld.Parent = part
 	end
-	local muzzle = Instance.new("Attachment")
-	muzzle.Name = "Muzzle"
-	muzzle.Position = (mesh.muzzle - mesh.grip) * half
-	muzzle.Parent = handle
+	local muzzleAt = (mesh.muzzle - mesh.grip) * half
+	attach(handle, "Muzzle", muzzleAt)
+	attach(
+		handle,
+		"Aim",
+		if mesh.aim then (mesh.aim - mesh.grip) * half else Vector3.new(muzzleAt.X, (1 - mesh.grip.Y) * half.Y, 0)
+	)
+	attach(
+		handle,
+		"Support",
+		if mesh.support
+			then (mesh.support - mesh.grip) * half
+			else Vector3.new(muzzleAt.X, muzzleAt.Y - 0.25, muzzleAt.Z * 0.5)
+	)
 	return model
 end
 
@@ -402,10 +433,9 @@ function Models.parts(kind: string): Model
 		weld.Part1 = part
 		weld.Parent = part
 	end
-	local muzzle = Instance.new("Attachment")
-	muzzle.Name = "Muzzle"
-	muzzle.Position = MUZZLE[kind] or MUZZLE.Rifle
-	muzzle.Parent = handle
+	attach(handle, "Muzzle", MUZZLE[kind] or MUZZLE.Rifle)
+	attach(handle, "Aim", AIM[kind] or AIM.Rifle)
+	attach(handle, "Support", SUPPORT[kind] or SUPPORT.Rifle)
 	return model
 end
 

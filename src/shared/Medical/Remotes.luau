@@ -20,8 +20,9 @@ Remotes.Names = {
 	"GunFire", -- C->S (tool, origin, directions)
 	"GunReload", -- C->S (tool)
 	"GunState", -- C->S (tool, aiming, pitch)
-	"GunFx", -- S->C (shooter, weaponId, origin, hits) shots by other players
+	"GunFx", -- S->C (shooter, weaponId, origin, directions) shots by other players
 	"GunHit", -- S->C (kind) hit confirmation for the shooter
+	"Stance", -- C->S (crouch, sprint, lean) movement state
 	"LockerTake", -- C->S (slot BasePart) take / equip a weapon from a locker
 }
 

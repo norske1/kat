@@ -486,6 +486,32 @@ test("animation sampling and weapon poses", function()
 	end
 end)
 
+test("stance poses and sprint blend", function()
+	local Animations = Harness.require("Animations")
+	expect(Animations.movement(0, 0) == nil, "standing straight has no pose")
+	local crouch = Animations.movement(1, 0)
+	expect(crouch and crouch.RightKnee[1] < -90, "crouch bends knees")
+	local left = Animations.movement(0, -1)
+	local right = Animations.movement(0, 1)
+	expect(left and right and left.Waist[3] > 0 and right.Waist[3] < 0, "lean rolls opposite ways")
+	for hold, sprintPose in Animations.GunSprint do
+		local run = Animations.gun(hold, 0, 0, nil, nil, 0, 1)
+		expect(run and math.abs(run.RightElbow[1] - sprintPose.RightElbow[1]) < 1e-6, hold .. " sprint pose")
+		local aimed = Animations.gun(hold, 1, 0, nil, nil, 0, 1)
+		local set = Animations.Gun[hold]
+		expect(
+			aimed and math.abs(aimed.RightShoulder[1] - set.aim.RightShoulder[1]) < 1e-6,
+			hold .. " aim beats sprint"
+		)
+	end
+end)
+
+test("ballistics drop and weapon velocities", function()
+	local Ballistics = Harness.require("Weapons/Ballistics")
+	expect(math.abs(Ballistics.dropAt(1000, 3000, 35) - 0.5 * 35 * (1 / 3) ^ 2) < 1e-9, "drop formula")
+	expect(Ballistics.dropAt(500, 1300, 35) > Ballistics.dropAt(500, 3000, 35), "slower bullets drop more")
+end)
+
 print(("\n%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	local process = require("@lune/process")

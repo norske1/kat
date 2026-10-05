@@ -242,6 +242,33 @@ Animations.Gun = {
 	},
 } :: { [string]: { hip: Pose, aim: Pose } }
 
+-- Gun held low across the chest while sprinting (blended over the hip pose).
+Animations.GunSprint = {
+	Rifle = {
+		RightShoulder = { -5, 0, 0 },
+		RightElbow = { 75, 0, 0 },
+		LeftShoulder = { 35, -45, 0 },
+		LeftElbow = { 70, 0, 0 },
+		Waist = { 6, -10, 0 },
+	},
+	Pistol = {
+		RightShoulder = { 5, 0, 0 },
+		RightElbow = { 70, 0, 0 },
+		LeftShoulder = { 10, -20, 0 },
+		LeftElbow = { 40, 0, 0 },
+	},
+} :: { [string]: Pose }
+
+-- Stance poses layered under everything else (except full-body treatment clips).
+Animations.Crouch = {
+	Waist = { 12, 0, 0 },
+	RightHip = { 80, 0, 0 },
+	RightKnee = { -120, 0, 0 },
+	LeftHip = { 72, 0, 0 },
+	LeftKnee = { -112, 0, 0 },
+} :: Pose
+Animations.LeanAngle = 16 -- degrees of upper-body roll at full lean
+
 -- How much of the aim pitch each joint takes (sums to roughly 1 along the arm chain).
 Animations.PitchWeights =
 	{ Waist = 0.35, Neck = 0.45, RightShoulder = 0.65, LeftShoulder = 0.65 } :: { [string]: number }
@@ -354,7 +381,8 @@ function Animations.gun(
 	pitch: number,
 	action: string?,
 	actionT: number?,
-	kick: number?
+	kick: number?,
+	sprint: number?
 ): Pose?
 	local set = Animations.Gun[hold]
 	if not set then
@@ -363,6 +391,13 @@ function Animations.gun(
 	local a = math.clamp(aim, 0, 1)
 	local pose = Animations.add(Animations.copy(set.hip), set.hip, -a)
 	Animations.add(pose, set.aim, a)
+	local run = math.clamp(sprint or 0, 0, 1) * (1 - a)
+	local sprintPose = Animations.GunSprint[hold]
+	if run > 0.001 and sprintPose then
+		local current = Animations.copy(pose)
+		Animations.add(pose, current, -run)
+		Animations.add(pose, sprintPose, run)
+	end
 	for joint, weight in Animations.PitchWeights do
 		Animations.add(pose, { [joint] = { pitch * weight, 0, 0 } })
 	end
@@ -381,6 +416,17 @@ function Animations.gun(
 			Neck = { -1.5 * kick, 0, 0 },
 		})
 	end
+	return pose
+end
+
+-- Crouch (0..1) and lean (-1 left .. 1 right) layer. Returns nil when standing straight.
+function Animations.movement(crouch: number, lean: number): Pose?
+	if crouch < 0.001 and math.abs(lean) < 0.001 then
+		return nil
+	end
+	local pose = Animations.add({}, Animations.Crouch, math.clamp(crouch, 0, 1))
+	local roll = -math.clamp(lean, -1, 1) * Animations.LeanAngle
+	Animations.add(pose, { Waist = { 0, 0, roll }, Neck = { 0, 0, roll * 0.3 } })
 	return pose
 end
 

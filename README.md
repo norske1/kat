@@ -79,10 +79,15 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 | Input | Action |
 |---|---|
 | Left mouse | Fire (hold for automatic) |
-| Right mouse | Aim down sights |
+| Right mouse | Aim down sights (zooms in, lower mouse sensitivity) |
 | R | Reload |
 | V | Switch fire mode (M4A1: auto / semi) |
 | Left Alt (hold) | Free the mouse cursor |
+| Left Shift (hold) | Sprint (gun lowered, can't shoot) |
+| C | Crouch / stand (lowers your hitbox) |
+| Q / E | Lean left / right (press again to stand straight) |
+
+Sprint, crouch and lean also work without a gun.
 
 The menu has a body diagram (colour = bleeding severity; TQ/FX/SP/IV/IO/Ox badges), action
 categories, the injuries on the selected part, a vitals monitor, airway and medication status, and the log.
@@ -119,8 +124,23 @@ locker is built standing on it, opening towards the part's front face. Shelf con
 `WeaponConfig.LockerItems`. Set `WeaponConfig.GiveOnSpawn = true` to also spawn with `WeaponConfig.Loadout`.
 Racks still work too: tag a part `WeaponRack` and set a `WeaponId` attribute (no attribute = ammo crate).
 
+**First person (ACS style).** While a gun is out the camera locks to first person and you see gloved arms holding
+the gun (a local copy of the equipped model, `client/Weapons/Viewmodel.luau`). There is no hip crosshair: bullets
+leave the barrel, so aim with the sights (right mouse). The gun sways behind mouse movement, bobs while walking,
+drops into a sprint pose, kicks back on recoil and plays equip / reload / shell-loading / pump motions; injuries and
+pain make it shake. Other players see the third-person poses (including crouch, lean and sprint). Settings are in
+`Weapons/Config.luau`: `FirstPerson` (false = old over-the-shoulder camera), `ShowHipCrosshair`, `AimSensitivity`,
+`Viewmodel` (hip position, sight distance and zoom per hold type), `SleeveColor` / `GloveColor`, and the movement
+speeds. Sights line up through each gun's `Aim` point (`mesh.aim` for imported models); `Support` (`mesh.support`)
+is where the left hand holds it.
+
+**Ballistics.** Bullets are not instant: they fly at the weapon's `velocity` (studs/s) and drop under
+`BulletGravity`, simulated on the server for damage and on every client for tracers and impacts
+(`Weapons/Ballistics.luau`). Bullets passing close to you crack past, and other players' gunshots are heard after
+distance / `SpeedOfSound`, so far-away shots arrive late.
+
 The client only sends the shot origin and directions. The server checks the weapon, ammo, fire rate and origin,
-re-casts every ray and calls `MedicalService.applyDamage` with the limb that was hit and `"Bullet"` damage, so
+simulates every bullet and calls `MedicalService.applyDamage` with the limb that was hit and `"Bullet"` damage, so
 a leg hit bleeds and can fracture, chest hits can cause a pneumothorax, and so on. You can't shoot while unconscious,
 treating someone or carrying a patient, and arm fractures, tourniquets and pain slow reloads and widen spread.
 Stats (damage, RPM, magazine, spread, recoil, falloff) are in `src/shared/Medical/Weapons/Config.luau`.

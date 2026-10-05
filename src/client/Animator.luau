@@ -6,6 +6,7 @@
 --   MedCarryAnim                carry / drag hold pose
 --   GunHold, GunAim, GunPitch   weapon hold type, aiming and aim pitch
 --   GunAction, GunActionT, GunActionDur   reload / pump / equip
+--   MoveCrouch, MoveSprint, MoveLean        stance (crouch legs, lowered gun, upper-body lean)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -48,11 +49,15 @@ type CharState = {
 	aim: number,
 	pitch: number,
 	kick: number,
+	crouch: number,
+	sprint: number,
+	lean: number,
 	lastPose: any,
 }
 
 local states: { [Model]: CharState } = {}
 local localGun = nil -- { hold, aiming, pitch } for the local player (no network delay)
+local localMove = nil -- { crouch, sprint, lean } for the local player
 
 local function findMotors(character: Model, humanoid: Humanoid)
 	local motors = {}
@@ -80,6 +85,9 @@ local function stateFor(character: Model, humanoid: Humanoid): CharState
 			aim = 0,
 			pitch = 0,
 			kick = 0,
+			crouch = 0,
+			sprint = 0,
+			lean = 0,
 			lastPose = nil,
 		}
 		states[character] = st
@@ -128,7 +136,22 @@ local function gunPose(character: Model, st: CharState, dt: number, isLocal: boo
 			actionT = now - started
 		end
 	end
-	return Animations.gun(hold, st.aim, st.pitch, action, actionT, st.kick)
+	return Animations.gun(hold, st.aim, st.pitch, action, actionT, st.kick, st.sprint)
+end
+
+local function updateMove(character: Model, st: CharState, dt: number, isLocal: boolean)
+	local crouch, sprint, lean
+	if isLocal and localMove then
+		crouch, sprint, lean = localMove.crouch, localMove.sprint, localMove.lean
+	else
+		crouch = character:GetAttribute("MoveCrouch") == true
+		sprint = character:GetAttribute("MoveSprint") == true
+		lean = character:GetAttribute("MoveLean") or 0
+	end
+	local f = math.min(1, dt * 10)
+	st.crouch += ((if crouch then 1 else 0) - st.crouch) * f
+	st.sprint += ((if sprint then 1 else 0) - st.sprint) * f
+	st.lean += (lean - st.lean) * f
 end
 
 local function step(dt: number)
@@ -142,6 +165,7 @@ local function step(dt: number)
 		end
 		local st = stateFor(character, humanoid)
 		st.kick *= math.exp(-dt * 12)
+		updateMove(character, st, dt, player == me)
 		local pose = nil
 		local ragdolled = character:GetAttribute("MedRagdoll") == true or humanoid.Health <= 0
 		if not ragdolled then
@@ -151,6 +175,15 @@ local function step(dt: number)
 				pose = Animations.medical(clip, now - started)
 			else
 				pose = gunPose(character, st, dt, player == me, now)
+				local crouch = if humanoid.RigType == Enum.HumanoidRigType.R15 then st.crouch else 0
+				local move = Animations.movement(crouch, st.lean)
+				if move then
+					if not st.motors.Waist and move.Waist then
+						move.Root = move.Waist -- R6 has no waist: lean the whole torso
+						move.Waist = nil
+					end
+					pose = if pose then Animations.add(pose, move) else move
+				end
 			end
 		end
 		if ragdolled then
@@ -177,6 +210,10 @@ end
 
 function Animator.setLocalGun(state)
 	localGun = state
+end
+
+function Animator.setLocalMove(state)
+	localMove = state
 end
 
 function Animator.kick(character: Model?, amount: number)

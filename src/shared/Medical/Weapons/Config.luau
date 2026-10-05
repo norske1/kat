@@ -16,10 +16,43 @@ WeaponConfig.RateTolerance = 0.8 -- anti-cheat: accept shots at 80% of the fire 
 WeaponConfig.ReloadKey = Enum.KeyCode.R
 WeaponConfig.FireModeKey = Enum.KeyCode.V
 WeaponConfig.FreeMouseKey = Enum.KeyCode.LeftAlt -- hold to unlock the mouse while a gun is out
-WeaponConfig.CameraOffset = Vector3.new(1.8, 0.5, 0) -- over-the-shoulder camera while a gun is equipped
+WeaponConfig.SprintKey = Enum.KeyCode.LeftShift -- hold
+WeaponConfig.CrouchKey = Enum.KeyCode.C -- toggle
+WeaponConfig.LeanLeftKey = Enum.KeyCode.Q -- toggle
+WeaponConfig.LeanRightKey = Enum.KeyCode.E -- toggle
+
+-- First person (ACS style): the camera locks to first person while a gun is out and you see arms holding
+-- the gun. Shots leave the barrel, so aim with the sights (right mouse). false = over-the-shoulder camera.
+WeaponConfig.FirstPerson = true
+WeaponConfig.ShowHipCrosshair = false -- first person only; the third-person camera always has one
+WeaponConfig.AimSensitivity = 0.55 -- mouse sensitivity while aiming down sights
+WeaponConfig.SleeveColor = Color3.fromRGB(78, 84, 62)
+WeaponConfig.GloveColor = Color3.fromRGB(34, 34, 36)
+-- Per hold type: where the grip sits at the hip (camera space), how far in front of the eye the sights sit
+-- when aiming, the aim field of view, and where the support hand goes to change magazines (gun space).
+WeaponConfig.Viewmodel = {
+	Rifle = { hip = Vector3.new(0.5, -0.7, -0.9), aimDistance = 0.6, fov = 50, magWell = Vector3.new(0, -0.1, -0.55) },
+	Pistol = { hip = Vector3.new(0.4, -0.62, -1.4), aimDistance = 1.3, fov = 58, magWell = Vector3.new(0, -0.42, 0.04) },
+}
+
+-- Movement (works with or without a gun): speed multipliers and lean / crouch sizes.
+WeaponConfig.SprintSpeed = 1.45
+WeaponConfig.CrouchSpeed = 0.55
+WeaponConfig.AimSpeed = 0.75
+WeaponConfig.CrouchDrop = 1 -- studs the character (and its hitbox) is lowered when crouched (R15)
+WeaponConfig.LeanOffset = 1.1 -- studs the camera moves sideways when leaning
+WeaponConfig.LeanAngle = 14 -- degrees of camera roll when leaning
+
+-- Over-the-shoulder camera (FirstPerson = false)
+WeaponConfig.CameraOffset = Vector3.new(1.8, 0.5, 0)
 WeaponConfig.AimCameraOffset = Vector3.new(1.4, 0.6, 0)
 WeaponConfig.AimFov = 45
-WeaponConfig.TracerSpeed = 1400 -- studs per second (visual only)
+
+-- Ballistics: bullets fly at the weapon's `velocity` and drop under gravity. 1 stud = 0.28 m.
+WeaponConfig.BulletGravity = 35 -- studs/s² (9.81 m/s²)
+WeaponConfig.DefaultVelocity = 2500 -- studs/s when a weapon has no `velocity`
+WeaponConfig.SpeedOfSound = 1225 -- studs/s: far-away gunshots are heard late
+WeaponConfig.CrackDistance = 8 -- studs: bullets passing closer than this crack past you
 WeaponConfig.MaxBulletHoles = 80
 
 export type Recoil = { vertical: number, horizontal: number, kick: number }
@@ -48,6 +81,7 @@ export type Weapon = {
 	spreadAim: number,
 	spreadMove: number, -- multiplier added while moving
 	pelletSpread: number?, -- extra cone for shotgun pellets
+	velocity: number?, -- muzzle velocity in studs/s
 	recoil: Recoil,
 	fireSound: string,
 }
@@ -64,8 +98,11 @@ WeaponConfig.Weapons = {
 			length = 3.66,
 			grip = Vector3.new(0.0805, -0.1772, 0.3387),
 			muzzle = Vector3.new(0.0805, 0.4559, -1),
+			aim = Vector3.new(0.0816, 0.9607, 0.3388), -- rear sight aperture
+			support = Vector3.new(0.0816, 0.216, -0.317), -- under the handguard
 		},
 		damage = 32,
+		velocity = 3000,
 		damageType = "Bullet",
 		pellets = 1,
 		rpm = 750,
@@ -96,8 +133,11 @@ WeaponConfig.Weapons = {
 			length = 0.93,
 			grip = Vector3.new(0, -0.2421, 0.6115),
 			muzzle = Vector3.new(0, 0.6685, -0.9991),
+			aim = Vector3.new(0, 0.9388, 0.7403), -- rear sight dots
+			support = Vector3.new(-1.12, -0.534, 0.74), -- left hand wrapped around the right
 		},
 		damage = 22,
+		velocity = 1300,
 		damageType = "Bullet",
 		pellets = 1,
 		rpm = 420,
@@ -122,6 +162,7 @@ WeaponConfig.Weapons = {
 		hold = "Rifle",
 		model = "Shotgun",
 		damage = 10,
+		velocity = 1400,
 		damageType = "Bullet",
 		pellets = 8,
 		rpm = 70,
