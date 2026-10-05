@@ -178,6 +178,14 @@ if Config.SpawnTrainingDummies and (RunService:IsStudio() or Config.AllowDummies
 	end)
 end
 
+-- The game mode runs before the weapons so the lockers at its team bases exist when the locker system starts.
+local gameOk, gameErr = pcall(function()
+	require(script.Parent.GameMode.GameService).init()
+end)
+if not gameOk then
+	warn("[KATMedical] game mode failed to start: " .. tostring(gameErr))
+end
+
 -- Guns are optional: a failure there must not take the medical system down with it.
 local weaponsOk, weaponsErr = pcall(function()
 	require(script.Parent.Weapons.WeaponService).init()

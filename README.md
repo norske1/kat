@@ -210,6 +210,28 @@ Use `carbine_fire.wav` for FieldCarbine, `pistol_fire.wav` for ServicePistol, an
 uploaded effects with the *functional* guns. Asset ownership and audio permissions must allow
 your experience to play the uploaded IDs.
 
+## Game mode: tickets and objectives (Squad-style)
+
+Two sides, **Side A** and **Side B**, are created as Teams and players are auto-balanced. Settings live in
+`ReplicatedStorage.Medical.GameMode.Config`; the rules are in `GameMode/Rules.luau`, which has no Roblox
+dependencies and is tested under Lune.
+
+- **Tickets:** each side starts with `StartTickets` (250). Every death costs `DeathTickets` (1); being unconscious
+  doesn't count, only medical death or a reset. Losing an objective costs `ObjectiveLossTickets` (50), taken when the
+  enemy neutralises it. A side at 0 tickets loses; after `RoundEndSeconds` the round resets and everyone respawns.
+- **Objectives in order:** side A starts owning objective 1, side B owns the last one, and the ones between are
+  neutral. Each side can only attack the first objective it doesn't own counting from its own end, so A goes
+  1 -> 2 -> 3 and B goes 3 -> 2 -> 1. If A holds 1 and 2, B must take 2 back before 1 unlocks.
+- **Capturing:** the side with more living, conscious players in the zone moves it. An owned objective must be
+  neutralised first, then captured. Equal numbers freeze it (contested). Each extra player speeds it up
+  (`ExtraCapperBonus`, up to `MaxCaptureMultiplier`). Empty objectives drift back to their owner.
+- **Map:** tag Parts `Objective` and give each a number attribute `Order` (1, 2, 3...). The Part's box is the zone.
+  With no tagged Parts and `AutoBuildMap = true`, three objectives are built in a line, with a main base at each end.
+  Each base has a team spawn, a weapon locker and a medical crate, and neutral SpawnLocations are disabled.
+- **HUD:** the bar at the top shows both ticket counts and every objective in its owner's colour, with capture
+  progress and ATTACK / DEFEND / LOCKED for your side. A capture panel shows while you stand in a zone, and a
+  banner shows the winner.
+
 ## Development
 
 ```bash

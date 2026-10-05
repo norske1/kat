@@ -512,6 +512,67 @@ test("ballistics drop and weapon velocities", function()
 	expect(Ballistics.dropAt(500, 1300, 35) > Ballistics.dropAt(500, 3000, 35), "slower bullets drop more")
 end)
 
+local GAME = {
+	CaptureSeconds = 10,
+	ExtraCapperBonus = 0.5,
+	MaxCaptureMultiplier = 3,
+	RegenSeconds = 20,
+	DeathTickets = 1,
+	ObjectiveLossTickets = 50,
+}
+
+local function hold(rules, state, i: number, a: number, b: number, seconds: number)
+	local events = {}
+	for _ = 1, seconds * 10 do
+		for _, e in rules.capture(state, i, a, b, 0.1, GAME) do
+			table.insert(events, e)
+		end
+	end
+	return events
+end
+
+test("game mode: objectives are captured in order 1 -> 2 -> 3", function()
+	local Rules = Harness.require("GameMode/Rules")
+	local s = Rules.new(3, 250)
+	expect(s.points[1].owner == "A" and s.points[3].owner == "B" and s.points[2].owner == nil, "start owners")
+	expect(Rules.attackable(s.points, "A") == 2 and Rules.attackable(s.points, "B") == 2, "both attack 2")
+	hold(Rules, s, 3, 1, 0, 30)
+	expect(s.points[3].owner == "B" and s.points[3].progress == -100, "A can't touch 3 before 2")
+	hold(Rules, s, 1, 0, 1, 30)
+	expect(s.points[1].owner == "A" and s.points[1].progress == 100, "B can't touch 1 before 2")
+	local events = hold(Rules, s, 2, 1, 0, 11)
+	expect(s.points[2].owner == "A" and events[1] and events[1].kind == "captured", "A captures 2")
+	expect(s.tickets.A == 250 and s.tickets.B == 250, "capturing neutral costs nobody tickets")
+	-- A holds 1 and 2: B must retake 2 before 1, A may now attack 3
+	expect(Rules.attackable(s.points, "B") == 2 and Rules.attackable(s.points, "A") == 3, "lane moved")
+	hold(Rules, s, 1, 0, 3, 30)
+	expect(s.points[1].owner == "A", "1 locked for B while A holds 2")
+	events = hold(Rules, s, 2, 0, 1, 11)
+	expect(s.points[2].owner == nil and s.tickets.A == 200, "B neutralises 2: A -50")
+	expect(events[1] and events[1].kind == "lost" and events[1].side == "A", "lost event")
+	hold(Rules, s, 2, 0, 1, 11)
+	expect(s.points[2].owner == "B" and Rules.attackable(s.points, "B") == 1, "B owns 2, now attacks 1")
+end)
+
+test("game mode: contest, more players, regen and tickets", function()
+	local Rules = Harness.require("GameMode/Rules")
+	local s = Rules.new(3, 250)
+	hold(Rules, s, 2, 2, 2, 5)
+	expect(s.points[2].progress == 0, "equal numbers contest")
+	hold(Rules, s, 2, 3, 1, 2.5)
+	expect(math.abs(s.points[2].progress - 37.5) < 1e-6, "2 extra attackers capture 1.5x faster")
+	hold(Rules, s, 2, 0, 0, 5)
+	expect(math.abs(s.points[2].progress - 12.5) < 1e-6, "empty neutral objective drifts back")
+	for _ = 1, 249 do
+		Rules.death(s, "B", GAME)
+	end
+	expect(s.tickets.B == 1 and s.winner == nil, "deaths cost one ticket")
+	Rules.death(s, "B", GAME)
+	expect(s.tickets.B == 0 and s.winner == "A", "0 tickets loses")
+	hold(Rules, s, 2, 0, 5, 30)
+	expect(math.abs(s.points[2].progress - 12.5) < 1e-6, "nothing changes after the round ends")
+end)
+
 print(("\n%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	local process = require("@lune/process")
