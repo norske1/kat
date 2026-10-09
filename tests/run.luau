@@ -589,6 +589,50 @@ test("career stats", function()
 	expect(Career.sanitize(nil).kills == 0, "no saved data")
 end)
 
+test("squads and classes", function()
+	local Squads = Harness.require("GameMode/Squads")
+	local config = {
+		SquadSize = 3,
+		DefaultClass = "Rifleman",
+		Classes = {
+			{ name = "Commander", perSide = true },
+			{ name = "Squad Commander", cap = 1, leader = true },
+			{ name = "Rifleman" },
+			{ name = "Medic", cap = 1 },
+		},
+	}
+	local s = Squads.new(config)
+	expect(Squads.classOf(s, 1) == "Rifleman", "no squad = rifleman")
+	expect(not Squads.setClass(s, 1, "Medic", "A"), "needs a squad for medic")
+	Squads.create(s, 1, "A")
+	local squad = Squads.squadOf(s, 1)
+	expect(squad and squad.number == 1 and Squads.classOf(s, 1) == "Squad Commander", "creator leads")
+	expect(Squads.join(s, 2, squad.id, "A") and Squads.join(s, 3, squad.id, "A"), "join")
+	expect(not Squads.join(s, 4, squad.id, "A"), "squad cap")
+	expect(not Squads.join(s, 5, squad.id, "B"), "other side")
+	expect(Squads.setClass(s, 2, "Medic", "A") and not Squads.setClass(s, 3, "Medic", "A"), "medic cap")
+	expect(not Squads.setClass(s, 2, "Squad Commander", "A"), "only leader is squad commander")
+	expect(not Squads.setClass(s, 1, "Medic", "A"), "leader keeps class")
+	expect(Squads.setPublic(s, 1, false) and not Squads.setPublic(s, 2, true), "only leader sets private")
+	Squads.kick(s, 1, 3)
+	expect(not Squads.squadOf(s, 3) and not Squads.join(s, 3, squad.id, "A"), "kicked, private")
+	expect(not Squads.kick(s, 2, 1), "members can't kick")
+	Squads.leave(s, 1)
+	expect(squad.leader == 2 and Squads.classOf(s, 2) == "Squad Commander", "leadership passes on")
+	expect(Squads.setClass(s, 6, "Commander", "A") and Squads.classOf(s, 6) == "Commander", "commander")
+	expect(not Squads.setClass(s, 7, "Commander", "A") and Squads.setClass(s, 7, "Commander", "B"), "1 per side")
+	Squads.setClass(s, 2, "Commander", "A") -- taken: stays in squad
+	expect(Squads.squadOf(s, 2) ~= nil, "failed commander keeps squad")
+	Squads.create(s, 8, "A")
+	expect(Squads.squadOf(s, 8).number == 2, "squad numbers")
+	Squads.remove(s, 2)
+	expect(s.squads[squad.id] == nil, "empty squad removed")
+	Squads.create(s, 9, "A")
+	expect(Squads.squadOf(s, 9).number == 1, "numbers reused")
+	local data = Squads.serialize(s)
+	expect(#data.squads == 2 and data.commanders.A == 6 and data.commanders.B == 7, "serialize")
+end)
+
 test("game mode: team gap limit", function()
 	local Rules = Harness.require("GameMode/Rules")
 	expect(not Rules.canJoin(8, 5, 3), "5 vs 8: can't join the team with 8")

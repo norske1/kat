@@ -1,6 +1,8 @@
 --!nonstrict
 -- Main menu and team select for the game mode. Players join on the Lobby team without a character; "Join Round"
 -- opens team select, which asks the server to put them on a side (GameService.join enforces MaxTeamGap).
+-- The Squads page (opened after joining a side, or from the main page) creates/joins squads and picks classes
+-- through the Squad remote; the server (SquadService) validates everything and broadcasts SquadState.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -18,7 +20,9 @@ local T = Ui.Theme
 local MainMenu = {}
 
 local player = Players.LocalPlayer
-local gui, mainPage, teamPage, careerPage, resumeButton, status
+local gui, mainPage, teamPage, careerPage, squadPage, resumeButton, status
+local squadState = { squads = {}, commanders = { A = 0, B = 0 } }
+local sq: { [string]: any } = {} -- squad page widgets
 local careerValues = {}
 local cards = {}
 local isOpen = false
@@ -59,7 +63,12 @@ local function show(page: string)
 	mainPage.Visible = page == "main"
 	teamPage.Visible = page == "team"
 	careerPage.Visible = page == "career"
+	squadPage.Visible = page == "squad"
 	status.Text = ""
+	sq.status.Text = ""
+	if page == "squad" then
+		sq.render()
+	end
 end
 
 function MainMenu.open(page: string?)
@@ -138,6 +147,331 @@ local function card(side: string, order: number, row: Frame)
 	cards[side] = { players = playersLabel, tickets = ticketsLabel, button = button, color = color }
 end
 
+local function nameOf(uid: number): string
+	local p = Players:GetPlayerByUserId(uid)
+	return if p then p.DisplayName else "?"
+end
+
+local function sendSquad(action: string, arg: any?)
+	sq.status.TextColor3 = T.TextDim
+	sq.status.Text = "..."
+	Remotes.get("Squad"):FireServer(action, arg)
+end
+
+local function mySquad()
+	for _, squad in squadState.squads do
+		for _, m in squad.members do
+			if m.userId == player.UserId then
+				return squad
+			end
+		end
+	end
+	return nil
+end
+
+local function panel(props)
+	props.BackgroundColor3 = T.Panel
+	return Ui.make("Frame", props, { Ui.corner(8) })
+end
+
+local function buildSquadPage()
+	squadPage = Ui.make("Frame", {
+		Name = "Squads",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(760, 490),
+		BackgroundTransparency = 1,
+		Visible = false,
+		Parent = gui,
+	})
+	centered({
+		Text = "SQUADS",
+		Font = T.FontBold,
+		TextSize = 32,
+		Size = UDim2.new(1, 0, 0, 40),
+		Parent = squadPage,
+	})
+	sq.class = centered({
+		TextSize = 15,
+		TextColor3 = T.TextDim,
+		Size = UDim2.new(1, 0, 0, 20),
+		Position = UDim2.fromOffset(0, 42),
+		Parent = squadPage,
+	})
+
+	-- left: commander + squad list
+	local left = panel({ Size = UDim2.fromOffset(370, 340), Position = UDim2.fromOffset(0, 72), Parent = squadPage })
+	local create = Ui.button({
+		Text = "CREATE SQUAD",
+		Font = T.FontBold,
+		TextSize = 16,
+		BackgroundColor3 = T.Accent,
+		Size = UDim2.new(1, -24, 0, 34),
+		Position = UDim2.fromOffset(12, 12),
+		Parent = left,
+	})
+	create.Activated:Connect(function()
+		sendSquad("create")
+	end)
+	sq.commander = Ui.label({
+		TextSize = 14,
+		Size = UDim2.new(1, -128, 0, 32),
+		Position = UDim2.fromOffset(12, 54),
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		TextWrapped = false,
+		Parent = left,
+	})
+	sq.commanderButton = Ui.button({
+		Size = UDim2.fromOffset(100, 30),
+		Position = UDim2.new(1, -112, 0, 55),
+		Parent = left,
+	})
+	sq.commanderButton.Activated:Connect(function()
+		local side = mySide()
+		if side and squadState.commanders[side] == player.UserId then
+			sendSquad("class", GameConfig.DefaultClass)
+		else
+			sendSquad("class", "Commander")
+		end
+	end)
+	sq.list = Ui.scroll({
+		Size = UDim2.new(1, -24, 0, 236),
+		Position = UDim2.fromOffset(12, 94),
+		Parent = left,
+	})
+	Ui.list(6).Parent = sq.list
+
+	-- right: my squad
+	local right = panel({ Size = UDim2.fromOffset(374, 340), Position = UDim2.fromOffset(386, 72), Parent = squadPage })
+	sq.header = Ui.label({
+		Font = T.FontBold,
+		TextSize = 18,
+		Size = UDim2.new(1, -230, 0, 30),
+		Position = UDim2.fromOffset(12, 12),
+		Parent = right,
+	})
+	sq.public = Ui.button({
+		Size = UDim2.fromOffset(100, 30),
+		Position = UDim2.new(1, -218, 0, 12),
+		Parent = right,
+	})
+	sq.public.Activated:Connect(function()
+		local squad = mySquad()
+		if squad then
+			sendSquad("public", not squad.public)
+		end
+	end)
+	sq.leave = Ui.button({
+		Text = "LEAVE",
+		Size = UDim2.fromOffset(94, 30),
+		Position = UDim2.new(1, -106, 0, 12),
+		Parent = right,
+	})
+	sq.leave.Activated:Connect(function()
+		sendSquad("leave")
+	end)
+	sq.hint = Ui.label({
+		Text = "You're not in a squad, so you're a Rifleman. Create or join a squad to pick a class.",
+		TextSize = 15,
+		TextColor3 = T.TextDim,
+		Size = UDim2.new(1, -24, 0, 60),
+		Position = UDim2.fromOffset(12, 50),
+		Parent = right,
+	})
+	sq.classes = Ui.make("Frame", {
+		Size = UDim2.new(1, -24, 0, 74),
+		Position = UDim2.fromOffset(12, 50),
+		BackgroundTransparency = 1,
+		Parent = right,
+	}, {
+		Ui.make("UIGridLayout", {
+			CellSize = UDim2.fromOffset(112, 34),
+			CellPadding = UDim2.fromOffset(5, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	sq.members = Ui.scroll({
+		Size = UDim2.new(1, -24, 0, 196),
+		Position = UDim2.fromOffset(12, 134),
+		Parent = right,
+	})
+	Ui.list(4).Parent = sq.members
+
+	sq.status = centered({
+		Text = "",
+		TextSize = 15,
+		Size = UDim2.new(1, 0, 0, 24),
+		Position = UDim2.fromOffset(0, 418),
+		Parent = squadPage,
+	})
+	local done = Ui.button({
+		Text = "DONE",
+		Font = T.FontBold,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(160, 34),
+		Position = UDim2.new(0.5, 0, 0, 450),
+		Parent = squadPage,
+	})
+	done.Activated:Connect(function()
+		if mySide() and player.Character then
+			MainMenu.close()
+		else
+			show("main")
+		end
+	end)
+	sq.render = function()
+		local side = mySide()
+		local squad = mySquad()
+		local leader = squad and squad.leader == player.UserId
+		sq.class.Text = "Your class: " .. tostring(player:GetAttribute("Class") or GameConfig.DefaultClass)
+
+		local commander = if side then squadState.commanders[side] or 0 else 0
+		sq.commander.Text = "Commander: " .. (if commander ~= 0 then nameOf(commander) else "vacant")
+		sq.commanderButton.Text = if commander == player.UserId then "RESIGN" else "TAKE"
+		local canTake = commander == 0 or commander == player.UserId
+		sq.commanderButton.Active = canTake
+		sq.commanderButton.AutoButtonColor = canTake
+		sq.commanderButton.TextColor3 = if canTake then T.Text else T.TextDim
+
+		Ui.clear(sq.list)
+		for i, s in squadState.squads do
+			if s.side == side then
+				local row = panel({
+					Size = UDim2.new(1, -6, 0, 40),
+					BackgroundColor3 = T.PanelLight,
+					LayoutOrder = i,
+					Parent = sq.list,
+				})
+				row.BackgroundColor3 = T.PanelLight
+				Ui.label({
+					Text = ("Squad %d  %d/%d  %s"):format(
+						s.number,
+						#s.members,
+						GameConfig.SquadSize,
+						if s.public then "Public" else "Private"
+					),
+					Font = T.FontBold,
+					TextSize = 14,
+					Size = UDim2.new(1, -100, 0, 20),
+					Position = UDim2.fromOffset(10, 2),
+					Parent = row,
+				})
+				Ui.label({
+					Text = "Led by " .. nameOf(s.leader),
+					TextSize = 12,
+					TextColor3 = T.TextDim,
+					TextTruncate = Enum.TextTruncate.AtEnd,
+					TextWrapped = false,
+					Size = UDim2.new(1, -100, 0, 16),
+					Position = UDim2.fromOffset(10, 21),
+					Parent = row,
+				})
+				local mine = squad and squad.id == s.id
+				local open = s.public and #s.members < GameConfig.SquadSize
+				local join = Ui.button({
+					Text = if mine then "JOINED" elseif not s.public then "PRIVATE" elseif open then "JOIN" else "FULL",
+					Size = UDim2.fromOffset(80, 28),
+					Position = UDim2.new(1, -88, 0, 6),
+					Parent = row,
+				})
+				local can = open and not mine
+				join.Active = can
+				join.AutoButtonColor = can
+				join.TextColor3 = if can then T.Text else T.TextDim
+				join.Activated:Connect(function()
+					if join.Active then
+						sendSquad("join", s.id)
+					end
+				end)
+			end
+		end
+
+		sq.hint.Visible = squad == nil
+		sq.classes.Visible = squad ~= nil
+		sq.public.Visible = leader == true
+		sq.leave.Visible = squad ~= nil
+		sq.header.Text = if squad
+			then ("Squad %d  %d/%d"):format(squad.number, #squad.members, GameConfig.SquadSize)
+			else "No squad"
+		Ui.clear(sq.classes)
+		Ui.clear(sq.members)
+		if not squad then
+			return
+		end
+		sq.public.Text = if squad.public then "PUBLIC" else "PRIVATE"
+		local myClass
+		local taken = {}
+		for _, m in squad.members do
+			taken[m.class] = (taken[m.class] or 0) + 1
+			if m.userId == player.UserId then
+				myClass = m.class
+			end
+		end
+		for i, def in GameConfig.Classes do
+			if not def.perSide then
+				local count = taken[def.name] or 0
+				local selected = myClass == def.name
+				local full = def.cap ~= nil and count >= def.cap and not selected
+				local allowed = not selected and not full and not leader and not def.leader
+				local b = Ui.button({
+					Text = if def.cap then ("%s %d/%d"):format(def.name, count, def.cap) else def.name,
+					TextSize = 12,
+					TextWrapped = true,
+					LayoutOrder = i,
+					BackgroundColor3 = if selected then T.Accent else T.PanelLight,
+					TextColor3 = if selected or allowed then T.Text else T.TextDim,
+					AutoButtonColor = allowed,
+					Parent = sq.classes,
+				})
+				b.Active = allowed
+				b.Activated:Connect(function()
+					if b.Active then
+						sendSquad("class", def.name)
+					end
+				end)
+			end
+		end
+		for i, m in squad.members do
+			local row = Ui.make("Frame", {
+				Size = UDim2.new(1, -6, 0, 30),
+				BackgroundColor3 = T.PanelLight,
+				LayoutOrder = i,
+				Parent = sq.members,
+			}, { Ui.corner(4) })
+			Ui.label({
+				Text = nameOf(m.userId),
+				TextSize = 14,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				TextWrapped = false,
+				Size = UDim2.new(0.5, -10, 1, 0),
+				Position = UDim2.fromOffset(10, 0),
+				Parent = row,
+			})
+			Ui.label({
+				Text = m.class or GameConfig.DefaultClass,
+				TextSize = 13,
+				TextColor3 = T.TextDim,
+				Size = UDim2.new(0.5, -80, 1, 0),
+				Position = UDim2.new(0.5, 0, 0, 0),
+				Parent = row,
+			})
+			if leader and m.userId ~= player.UserId then
+				local kick = Ui.button({
+					Text = "KICK",
+					TextSize = 12,
+					TextColor3 = T.Bad,
+					Size = UDim2.fromOffset(60, 22),
+					Position = UDim2.new(1, -66, 0, 4),
+					Parent = row,
+				})
+				kick.Activated:Connect(function()
+					sendSquad("kick", m.userId)
+				end)
+			end
+		end
+	end
+end
+
 local function build()
 	gui = Ui.make("ScreenGui", {
 		Name = "MainMenu",
@@ -164,7 +498,7 @@ local function build()
 		Name = "Main",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(460, 300),
+		Size = UDim2.fromOffset(460, 340),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
@@ -258,13 +592,31 @@ local function build()
 	careerButton.Activated:Connect(function()
 		show("career")
 	end)
+	local squadsButton = Ui.button({
+		Text = "SQUADS",
+		Font = T.FontBold,
+		TextSize = 18,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(280, 40),
+		Position = UDim2.new(0.5, 0, 0, 246),
+		Parent = mainPage,
+	})
+	squadsButton.Activated:Connect(function()
+		if mySide() then
+			show("squad")
+		else
+			show("team")
+			status.TextColor3 = T.TextDim
+			status.Text = "Join a team first, then pick a squad"
+		end
+	end)
 	resumeButton = Ui.button({
 		Text = "RESUME",
 		Font = T.FontBold,
 		TextSize = 18,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Size = UDim2.fromOffset(280, 40),
-		Position = UDim2.new(0.5, 0, 0, 246),
+		Position = UDim2.new(0.5, 0, 0, 296),
 		Visible = false,
 		Parent = mainPage,
 	})
@@ -322,6 +674,7 @@ local function build()
 	back.Activated:Connect(function()
 		show("main")
 	end)
+	buildSquadPage()
 end
 
 local function updateCareer()
@@ -385,10 +738,28 @@ function MainMenu.init()
 	end
 	build()
 	MainMenu.open("main")
+	Remotes.get("SquadState").OnClientEvent:Connect(function(newState)
+		if typeof(newState) == "table" then
+			squadState = newState
+			if isOpen and squadPage.Visible then
+				sq.render()
+			end
+		end
+	end)
+	Remotes.get("SquadResult").OnClientEvent:Connect(function(ok, message)
+		sq.status.TextColor3 = if ok then T.TextDim else T.Bad
+		sq.status.Text = if ok then "" elseif typeof(message) == "string" then message else "Not allowed"
+	end)
+	Remotes.get("Squad"):FireServer("sync")
+	player:GetAttributeChangedSignal("Class"):Connect(function()
+		if isOpen and squadPage.Visible then
+			sq.render()
+		end
+	end)
 	Remotes.get("TeamResult").OnClientEvent:Connect(function(ok, message)
 		pending = false
 		if ok then
-			MainMenu.close()
+			show("squad")
 		else
 			status.TextColor3 = T.Bad
 			status.Text = if typeof(message) == "string" then message else "You can't join that team"

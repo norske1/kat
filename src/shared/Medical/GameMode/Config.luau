@@ -1,5 +1,7 @@
 --!strict
 -- Squad-style game mode: two sides, tickets and a lane of objectives captured in order.
+export type ClassDef = { name: string, cap: number?, perSide: boolean?, leader: boolean?, description: string? }
+
 local GameConfig = {}
 
 GameConfig.Enabled = true
@@ -22,6 +24,21 @@ GameConfig.MenuKey = Enum.KeyCode.M -- reopens the main menu to switch teams
 GameConfig.Lobby = { name = "Lobby", color = Color3.fromRGB(150, 150, 155) }
 GameConfig.MaxTeamGap = 3 -- a side can't be joined if that would put it more than this many players ahead
 GameConfig.RespawnSeconds = 5 -- after dying, before you spawn at your main again
+
+-- Squads and classes: players create or join squads of up to SquadSize from the main menu's Squads page.
+-- Players outside a squad are Riflemen. `cap` is per squad; `perSide` classes are one per team and outside squads;
+-- the `leader` class belongs to whoever leads the squad. Classes are shown in the menu and saved for My Career;
+-- they don't change loadouts yet.
+GameConfig.SquadSize = 8
+GameConfig.DefaultClass = "Rifleman"
+GameConfig.Classes = {
+	{ name = "Commander", perSide = true, description = "Leads the whole team (1 per team, not in a squad)" },
+	{ name = "Squad Commander", cap = 1, leader = true, description = "Leads the squad" },
+	{ name = "Rifleman", description = "Standard infantry" },
+	{ name = "Medic", cap = 1, description = "Squad medic" },
+	{ name = "Engineer", cap = 1, description = "Squad engineer" },
+	{ name = "Machine Gunner", cap = 1, description = "Squad support gunner" },
+} :: { ClassDef }
 
 GameConfig.Sides = {
 	A = { name = "Side A", color = Color3.fromRGB(60, 130, 230) },

@@ -19,6 +19,7 @@ local Rules = require(Medical.GameMode.Rules)
 local MedicalService = require(script.Parent.Parent.MedicalService)
 local Remotes = require(Medical.Remotes)
 local CareerService = require(script.Parent.Parent.CareerService)
+local SquadService = require(script.Parent.SquadService)
 
 local GameService = {}
 
@@ -476,6 +477,7 @@ function GameService.init()
 		return
 	end
 	setupTeams()
+	SquadService.init()
 	zones = collectZones()
 	if #zones == 0 and GameConfig.AutoBuildMap then
 		buildMap()

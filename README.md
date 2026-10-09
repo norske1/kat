@@ -223,10 +223,17 @@ dependencies and is tested under Lune.
   the menu and switch sides (switching while unconscious costs a ticket). The server enforces the gap; the menu
   just greys out a full side. Characters only spawn for players on a side (`Players.CharacterAutoLoads` is turned
   off) and respawn `RespawnSeconds` after dying.
+- **Squads and classes:** the main menu's SQUADS page (shown after picking a team, or from the main page) lists your
+  team's squads. Anyone can create a squad (auto-named Squad 1, 2...) of up to `SquadSize` (8) players and leads it
+  as Squad Commander. They can make it private (nobody can join) and kick members. A kicked player keeps their class
+  until they respawn. If the Squad Commander leaves, the longest-serving member takes over. Squad members pick a
+  class: Rifleman (no limit), Medic, Engineer or Machine Gunner (1 each per squad). Players outside a squad are
+  Riflemen. Each team also has one Commander, who isn't in a squad. Classes are in `GameConfig.Classes` and set the
+  Player attribute `Class` (`src/server/GameMode/SquadService.luau`). They don't change loadouts yet.
 - **My Career:** the main menu's MY CAREER page shows total kills, deaths, K/D, most used class and time played.
   Stats are saved in the `KATCareer_v1` DataStore (`src/server/CareerService.luau`). A kill goes to the last enemy
-  who shot the victim in the 5 minutes before they died or gave up; team kills don't count. Classes don't exist
-  yet, so "most used class" uses the Player attribute `Class` and defaults to Rifleman. To save stats in Studio,
+  who shot the victim in the 5 minutes before they died or gave up; team kills don't count. "Most used class" is
+  the class (Player attribute `Class`) played longest. To save stats in Studio,
   enable Game Settings > Security > Enable Studio Access to API Services (the game must be published).
 - **Respawn while unconscious:** an unconscious player gets a Respawn button (click twice to confirm). It costs their
   side one death ticket. Turn it off with `Config.AllowGiveUp = false`.

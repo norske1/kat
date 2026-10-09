@@ -27,6 +27,9 @@ Remotes.Names = {
 	"Respawn", -- C->S give up while unconscious and respawn
 	"JoinTeam", -- C->S (side "A"/"B") pick a side from the team select menu
 	"TeamResult", -- S->C (ok, message) answer to JoinTeam
+	"Squad", -- C->S (action, arg) squad and class requests from the main menu (see SquadService)
+	"SquadState", -- S->C (state) all squads and commanders (GameMode.Squads.serialize)
+	"SquadResult", -- S->C (ok, message) answer to Squad
 }
 
 local FOLDER = "MedicalRemotes"

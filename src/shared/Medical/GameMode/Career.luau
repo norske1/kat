@@ -4,7 +4,7 @@ local Career = {}
 
 export type Data = { kills: number, deaths: number, seconds: number, classSeconds: { [string]: number } }
 
-Career.DefaultClass = "Rifleman" -- placeholder until there is a class system
+Career.DefaultClass = "Rifleman" -- class of players outside a squad (GameConfig.DefaultClass)
 
 function Career.new(): Data
 	return { kills = 0, deaths = 0, seconds = 0, classSeconds = {} }
