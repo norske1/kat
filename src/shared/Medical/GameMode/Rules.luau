@@ -108,6 +108,12 @@ function Rules.capture(state: State, i: number, countA: number, countB: number, 
 	return events
 end
 
+-- Whether a player may join a side that has `joining` players while the other has `other` (both without the
+-- player): joining must not leave that side more than maxGap players ahead.
+function Rules.canJoin(joining: number, other: number, maxGap: number): boolean
+	return joining + 1 - other <= maxGap
+end
+
 -- A player on `side` died.
 function Rules.death(state: State, side: Side, cfg: Settings)
 	if not state.winner then

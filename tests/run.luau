@@ -573,6 +573,14 @@ test("game mode: contest, more players, regen and tickets", function()
 	expect(math.abs(s.points[2].progress - 12.5) < 1e-6, "nothing changes after the round ends")
 end)
 
+test("game mode: team gap limit", function()
+	local Rules = Harness.require("GameMode/Rules")
+	expect(not Rules.canJoin(8, 5, 3), "5 vs 8: can't join the team with 8")
+	expect(Rules.canJoin(5, 8, 3), "5 vs 8: can join the team with 5")
+	expect(Rules.canJoin(7, 5, 3), "7 vs 5: joining makes 8 vs 5, gap 3 is allowed")
+	expect(Rules.canJoin(0, 0, 3) and Rules.canJoin(2, 0, 3) and not Rules.canJoin(3, 0, 3), "small teams")
+end)
+
 print(("\n%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	local process = require("@lune/process")

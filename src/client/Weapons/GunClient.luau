@@ -56,7 +56,10 @@ local function humanoid(): Humanoid?
 end
 
 local function mouseFree(): boolean
-	return Menu.isOpen() or Hud.wantsMouse() or UserInputService:IsKeyDown(WeaponConfig.FreeMouseKey)
+	return not medical.conscious
+		or Menu.isOpen()
+		or Hud.wantsMouse()
+		or UserInputService:IsKeyDown(WeaponConfig.FreeMouseKey)
 end
 
 local function isReloading(): boolean

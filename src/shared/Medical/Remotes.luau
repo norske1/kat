@@ -24,6 +24,9 @@ Remotes.Names = {
 	"GunHit", -- S->C (kind) hit confirmation for the shooter
 	"Stance", -- C->S (crouch, sprint, lean) movement state
 	"LockerTake", -- C->S (slot BasePart) take / equip a weapon from a locker
+	"Respawn", -- C->S give up while unconscious and respawn
+	"JoinTeam", -- C->S (side "A"/"B") pick a side from the team select menu
+	"TeamResult", -- S->C (ok, message) answer to JoinTeam
 }
 
 local FOLDER = "MedicalRemotes"

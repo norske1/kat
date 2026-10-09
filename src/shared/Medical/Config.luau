@@ -12,6 +12,7 @@ Config.SelfMenuKey = Enum.KeyCode.H
 Config.DropCarryKey = Enum.KeyCode.G
 Config.DebugToggleKey = Enum.KeyCode.F2
 Config.BloodEffects = false -- true: red bleeding/hit particles (answer Roblox's maturity questionnaire accordingly)
+Config.AllowGiveUp = true -- unconscious players get a Respawn button (costs their side a ticket in the game mode)
 Config.Hardcore = false -- hides thorax injuries / fractures until diagnosed
 Config.InfiniteSupplies = false
 Config.SpawnTrainingDummies = true -- spawns five training casualties near spawn (Studio only unless AllowDummiesInLive)

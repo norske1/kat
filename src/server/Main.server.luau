@@ -179,8 +179,10 @@ if Config.SpawnTrainingDummies and (RunService:IsStudio() or Config.AllowDummies
 end
 
 -- The game mode runs before the weapons so the lockers at its team bases exist when the locker system starts.
+local GameService = nil
 local gameOk, gameErr = pcall(function()
-	require(script.Parent.GameMode.GameService).init()
+	GameService = require(script.Parent.GameMode.GameService)
+	GameService.init()
 end)
 if not gameOk then
 	warn("[KATMedical] game mode failed to start: " .. tostring(gameErr))
@@ -193,4 +195,21 @@ end)
 if not weaponsOk then
 	warn("[KATMedical] weapon system failed to start: " .. tostring(weaponsErr))
 end
+-- Give up while unconscious: respawn (the game mode charges a death ticket).
+Remotes.get("Respawn").OnServerEvent:Connect(function(player)
+	if not Config.AllowGiveUp or throttled(player) then
+		return
+	end
+	local record = MedicalService.getByPlayer(player)
+	if not record or not record.state.alive or record.state.conscious then
+		return
+	end
+	ActionRunner.cancel(player)
+	Carry.drop(player)
+	if GameService and gameOk then
+		GameService.giveUp(player)
+	end
+	player:LoadCharacter()
+end)
+
 print("[KATMedical] server started" .. (if weaponsOk then "" else " (weapons disabled)"))

@@ -34,6 +34,9 @@ local function optional(name: string, start: () -> any): any
 	end
 	return result
 end
+optional("main menu", function()
+	require(script.Parent.MainMenu).init()
+end)
 optional("animations", function()
 	require(script.Parent.Animator).init()
 end)

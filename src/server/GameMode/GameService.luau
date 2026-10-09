@@ -5,6 +5,9 @@
 --   workspace: GameObjectives (count), Obj<i>Owner ("A"/"B"/""), Obj<i>Progress (-100..100), Obj<i>A / Obj<i>B
 --              (living players inside), GameWinner ("A"/"B"/""), GameResetAt (server time of the next round)
 --   Player: InObjective (index of the zone the player stands in, 0 if none)
+--   workspace: LobbyFocus (Vector3 the main menu camera circles)
+-- Players join on the Lobby team without a character, pick a side from the client's team select menu (JoinTeam
+-- remote, limited by GameConfig.MaxTeamGap) and are respawned by this service after dying.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +17,7 @@ local Medical = ReplicatedStorage:WaitForChild("Medical")
 local GameConfig = require(Medical.GameMode.Config)
 local Rules = require(Medical.GameMode.Rules)
 local MedicalService = require(script.Parent.Parent.MedicalService)
+local Remotes = require(Medical.Remotes)
 
 local GameService = {}
 
@@ -21,7 +25,9 @@ local state: Rules.State = Rules.new(0, GameConfig.StartTickets)
 local zones: { BasePart } = {}
 local visuals = {} -- [i] = { flag, ring, label, base, height }
 local teams: { [string]: Team } = {}
+local lobby: Team
 local roundOver = false
+local counted: { [Model]: boolean } = {} -- characters whose death already cost a ticket
 
 local NEUTRAL = Color3.fromRGB(235, 235, 235)
 
@@ -59,15 +65,33 @@ local function setupTeams()
 			team.Parent = Teams
 		end
 		team.TeamColor = BrickColor.new(side.color)
-		team.AutoAssignable = true
+		team.AutoAssignable = false
 		team:SetAttribute("Side", key)
 		teams[key] = team
 	end
+	local existing = Teams:FindFirstChild(GameConfig.Lobby.name)
+	lobby = if existing and existing:IsA("Team") then existing else Instance.new("Team")
+	lobby.Name = GameConfig.Lobby.name
+	lobby.TeamColor = BrickColor.new(GameConfig.Lobby.color)
+	lobby.AutoAssignable = true
+	lobby:SetAttribute("Side", nil)
+	lobby.Parent = Teams
 end
 
-local function smallestTeam(): Team
-	local a, b = #teams.A:GetPlayers(), #teams.B:GetPlayers()
-	return if b < a then teams.B else teams.A
+-- Players on `side` and on the other side, not counting `player`.
+local function countsFor(side: string, player: Player): (number, number)
+	local joining, other = 0, 0
+	for _, p in Players:GetPlayers() do
+		if p ~= player then
+			local s = GameService.sideOf(p)
+			if s == side then
+				joining += 1
+			elseif s == Rules.other(side) then
+				other += 1
+			end
+		end
+	end
+	return joining, other
 end
 
 -- Map --------------------------------------------------------------------------
@@ -294,7 +318,9 @@ local function checkWinner()
 		newRound()
 		broadcast("New round started", "info")
 		for _, player in Players:GetPlayers() do
-			task.spawn(player.LoadCharacter, player)
+			if GameService.sideOf(player) then
+				task.spawn(player.LoadCharacter, player)
+			end
 		end
 	end)
 end
@@ -355,33 +381,91 @@ local function step(dt: number)
 end
 
 -- Players ----------------------------------------------------------------------
+-- Costs `player`'s side a death ticket for `character`, once.
+local function chargeDeath(player: Player, character: Model)
+	if counted[character] then
+		return
+	end
+	counted[character] = true
+	character.Destroying:Once(function()
+		counted[character] = nil
+	end)
+	local side = GameService.sideOf(player)
+	if side and not roundOver then
+		Rules.death(state, side, GameConfig)
+		publish()
+		checkWinner()
+	end
+end
+
 local function onCharacter(player: Player, character: Model)
 	local humanoid = character:WaitForChild("Humanoid", 10)
 	if not humanoid then
 		return
 	end
 	humanoid.Died:Once(function()
-		local side = GameService.sideOf(player)
-		if side and not roundOver then
-			Rules.death(state, side, GameConfig)
-			publish()
-			checkWinner()
-		end
+		chargeDeath(player, character)
+		task.delay(GameConfig.RespawnSeconds, function()
+			if player.Parent and player.Character == character and GameService.sideOf(player) then
+				player:LoadCharacter()
+			end
+		end)
 	end)
+end
+
+-- Unconscious player gave up: costs a death ticket (the caller respawns them).
+function GameService.giveUp(player: Player)
+	if GameConfig.Enabled and player.Character then
+		chargeDeath(player, player.Character)
+	end
+end
+
+local function result(player: Player, ok: boolean, message: string?)
+	Remotes.get("TeamResult"):FireClient(player, ok, message)
+end
+
+function GameService.join(player: Player, side: any)
+	if side ~= "A" and side ~= "B" then
+		return
+	end
+	if GameService.sideOf(player) == side then
+		result(player, true)
+		return
+	end
+	local joining, other = countsFor(side, player)
+	if not Rules.canJoin(joining, other, GameConfig.MaxTeamGap) then
+		result(
+			player,
+			false,
+			("%s has %d players and %s has %d: join %s"):format(
+				sideName(side),
+				joining,
+				sideName(Rules.other(side)),
+				other,
+				sideName(Rules.other(side))
+			)
+		)
+		return
+	end
+	-- switching sides while down counts as giving up
+	if player.Character and GameService.sideOf(player) and MedicalService.isIncapacitated(player) then
+		chargeDeath(player, player.Character)
+	end
+	player.Team = teams[side]
+	result(player, true)
+	player:LoadCharacter()
 end
 
 local function onPlayer(player: Player)
 	player.CharacterAdded:Connect(function(character)
 		onCharacter(player, character)
 	end)
-	if not GameService.sideOf(player) then
-		-- joined before the teams existed (e.g. Studio play solo): assign and respawn at the team's base
-		player.Team = smallestTeam()
-		if player.Character then
-			task.defer(player.LoadCharacter, player)
-		end
-	elseif player.Character then
-		onCharacter(player, player.Character)
+	player.Team = lobby
+	if player.Character then
+		-- spawned before the game mode started (Studio play solo): wait in the lobby like everyone else
+		local character = player.Character
+		player.Character = nil
+		character:Destroy()
 	end
 end
 
@@ -403,7 +487,22 @@ function GameService.init()
 	for i, zone in zones do
 		decorate(zone, i)
 	end
+	local focus = if #zones > 0 then zones[math.ceil(#zones / 2)].Position else Vector3.new(0, 10, 0)
+	workspace:SetAttribute("LobbyFocus", focus)
+	local lastJoin: { [Player]: number } = {}
+	Remotes.get("JoinTeam").OnServerEvent:Connect(function(player, side)
+		local now = os.clock()
+		if lastJoin[player] and now - lastJoin[player] < 1 then
+			return
+		end
+		lastJoin[player] = now
+		GameService.join(player, side)
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		lastJoin[player] = nil
+	end)
 	newRound()
+	Players.CharacterAutoLoads = false
 	Players.PlayerAdded:Connect(onPlayer)
 	for _, player in Players:GetPlayers() do
 		task.spawn(onPlayer, player)

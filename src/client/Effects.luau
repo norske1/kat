@@ -1,12 +1,17 @@
 --!nonstrict
 -- Screen effects for the local player: pain, blood loss, hypoxia, unconsciousness.
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Medical = ReplicatedStorage:WaitForChild("Medical")
+local Config = require(Medical.Config)
+local Remotes = require(Medical.Remotes)
 local Ui = require(script.Parent.Ui)
 
 local Effects = {}
 
-local blur, color, overlay, blackout, causesLabel, vignette
+local blur, color, overlay, blackout, causesLabel, vignette, respawnButton
+local confirmUntil = 0
 local current = nil
 local painFlash = 0
 local lastPain = 0
@@ -83,6 +88,29 @@ function Effects.init(screen: ScreenGui)
 		Parent = blackout,
 	})
 
+	-- Modal so the cursor is free even in first person
+	respawnButton = Ui.button({
+		Text = "RESPAWN",
+		Font = Ui.Theme.FontBold,
+		TextSize = 18,
+		Modal = true,
+		BackgroundColor3 = Ui.Theme.Accent,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(260, 44),
+		Position = UDim2.new(0.5, 0, 0.42, 120),
+		ZIndex = 52,
+		Visible = false,
+		Parent = blackout,
+	})
+	respawnButton.Activated:Connect(function()
+		if os.clock() < confirmUntil then
+			confirmUntil = 0
+			Remotes.get("Respawn"):FireServer()
+		else
+			confirmUntil = os.clock() + 3
+		end
+	end)
+
 	RunService.RenderStepped:Connect(function(dt)
 		Effects.render(dt)
 	end)
@@ -104,6 +132,10 @@ function Effects.render(dt: number)
 	painFlash = math.max(0, painFlash - dt * 1.5)
 	local down = not d.conscious or not d.alive
 	blackout.Visible = down
+	respawnButton.Visible = down and d.alive and Config.AllowGiveUp
+	if respawnButton.Visible then
+		respawnButton.Text = if os.clock() < confirmUntil then "CLICK AGAIN TO RESPAWN" else "RESPAWN"
+	end
 	if down then
 		blackout.BackgroundTransparency = 0.04
 		if not d.alive then

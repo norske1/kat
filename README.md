@@ -212,10 +212,18 @@ your experience to play the uploaded IDs.
 
 ## Game mode: tickets and objectives (Squad-style)
 
-Two sides, **Side A** and **Side B**, are created as Teams and players are auto-balanced. Settings live in
+Two sides, **Side A** and **Side B**, are created as Teams, plus a **Lobby** team every player joins on. Settings live in
 `ReplicatedStorage.Medical.GameMode.Config`; the rules are in `GameMode/Rules.luau`, which has no Roblox
 dependencies and is tested under Lune.
 
+- **Main menu and team select:** players load in on the Lobby team with no character while the camera circles the
+  middle objective. "Join Round" opens team select. A side can't be joined if that would put it more than
+  `MaxTeamGap` (3) players ahead, so with 5 vs 8 everyone must join the side with 5. Press `MenuKey` (M) to reopen
+  the menu and switch sides (switching while unconscious costs a ticket). The server enforces the gap; the menu
+  just greys out a full side. Characters only spawn for players on a side (`Players.CharacterAutoLoads` is turned
+  off) and respawn `RespawnSeconds` after dying.
+- **Respawn while unconscious:** an unconscious player gets a Respawn button (click twice to confirm). It costs their
+  side one death ticket. Turn it off with `Config.AllowGiveUp = false`.
 - **Tickets:** each side starts with `StartTickets` (250). Every death costs `DeathTickets` (1); being unconscious
   doesn't count, only medical death or a reset. Losing an objective costs `ObjectiveLossTickets` (50), taken when the
   enemy neutralises it. A side at 0 tickets loses; after `RoundEndSeconds` the round resets and everyone respawns.
