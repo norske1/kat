@@ -9,14 +9,14 @@ It is written from scratch in Luau. The mechanics follow the KAT/ACE design, but
 | Area | What is simulated |
 |---|---|
 | Wounds | 6 body parts, 8 wound types × 3 sizes, per-wound bleeding & pain, weighted by damage type (bullet, explosive, blunt, fall, stab, melee) |
-| Circulation | Blood volume (6 L) with hemorrhage classes, HR/BP from cardiac output & peripheral resistance, coagulation factors, TXA/EACA, internal bleeding |
-| Bandages | Field dressing, packing, elastic, QuikClot, each with its own effectiveness and reopening chance. Stitching and NPWT close wounds permanently |
+| Circulation | Blood volume (6 L) with hemorrhage classes, HR/BP from cardiac output & peripheral resistance, coagulation factors, clotting agents, internal bleeding |
+| Bandages | Field dressing, packing, elastic, hemostatic gauze, each with its own effectiveness and reopening chance. Stitching and NPWT close wounds permanently |
 | Tourniquets | Stop limb bleeding and IV flow on that limb. They become painful after a while |
 | Fractures | Simple, compound, comminuted. Splints, closed reduction, surgical pathway (incision, retraction, irrigation, clamping, plating, stitching) |
-| Airway | Obstruction (tongue) and occlusion (vomit/blood) while unconscious. Head tilt (held), recovery position, Guedel, KingLT, suction, manual sweep |
-| Breathing | PaO2/SpO2 (oxygen dissociation curve), RR, EtCO2, pneumothorax stages 1-4, tension PTX, hemothorax. Chest seal, needle decompression, chest drain, BVM, oxygen, opioid respiratory depression |
-| Cardiac | Arrest on blood loss, hypoxia, brady/tachycardia, tension PTX, tamponade, overdose, transfusion reaction. VF/VT/PEA/asystole, arrest timer, CPR (slows the timer), AED and AED-X with manual shocks, reversible causes block ROSC, pericardiocentesis |
-| Pharmacy | 16g IV / FAST IO, saline/plasma/blood bags (all ABO/Rh types, compatibility, hemolytic reaction), and 18 medications with onset/peak/decay curves, dose stacking and overdoses. Naloxone and flumazenil reversal |
+| Airway | Obstruction (tongue) and occlusion (vomit/blood) while unconscious. Head tilt (held), recovery position, Guedel, airway tube, suction, manual sweep |
+| Breathing | PaO2/SpO2 (oxygen dissociation curve), RR, EtCO2, pneumothorax stages 1-4, tension PTX, hemothorax. Chest seal, needle decompression, chest drain, BVM, oxygen, medication-induced respiratory depression |
+| Cardiac | Arrest on blood loss, hypoxia, brady/tachycardia, tension PTX, tamponade, adverse medication reactions, transfusion reaction. VF/VT/PEA/asystole, arrest timer, CPR (slows the timer), AED and AED-X with manual shocks, reversible causes block ROSC, pericardiocentesis |
+| Pharmacy | 16g IV / FAST IO, saline/plasma/blood bags (all ABO/Rh types, compatibility, hemolytic reaction), and 18 medications with onset/peak/decay curves, dose stacking and adverse reactions. Reversal Spray and Sedative Reversal antidotes. All medications use fictional game names |
 | Monitoring | Manual pulse/BP/response checks, pulse oximeter, AED-X monitor with live ECG trace, ultrasound, blood type test |
 | Animations & sound | Every treatment has a procedural animation (kneel, bandage wrap, tourniquet, injection, CPR compressions, BVM, surgery, carry/drag holds) and sounds (bandage, ratchet, syringe, suction, AED charge/shock, body falls, pain) |
 | Guns | M4A1 rifle, G17 pistol, M870 shotgun built from parts, server-validated hitscan, hits become medical wounds on the exact limb, magazines/reloads, fire modes, recoil, spread, muzzle flash, tracers, impacts, weapon/ammo racks |
@@ -60,7 +60,7 @@ rojo serve default.project.json                    # sync into an existing place
 ```
 
 In Studio, five training casualties spawn in front of the spawn point (GSW leg, unconscious airway,
-VF arrest, blast, opioid overdose). There's also a debug panel for hurting yourself, healing, changing medical
+VF arrest, blast, over-medicated). There's also a debug panel for hurting yourself, healing, changing medical
 level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Config.StudioMedicalLevel`.
 
 ### Controls
@@ -231,6 +231,16 @@ dependencies and is tested under Lune.
 - **HUD:** the bar at the top shows both ticket counts and every objective in its owner's colour, with capture
   progress and ATTACK / DEFEND / LOCKED for your side. A capture panel shows while you stand in a zone, and a
   banner shows the winner.
+
+## Roblox content and maturity
+
+- Medications use fictional game names (Analgesic, Adrenaline, Clotting Agent, Reversal Spray...), not real drug or brand names. Equipment brand names were replaced with generic ones (Hemostatic Gauze, Airway Tube, Suction Pump, Clot Tester).
+- No drug-use mechanics: medications only exist as treatments given to a casualty.
+- Blood particles are off by default (`Config.BloodEffects = false`). Character hits show a light grey puff instead.
+- No gore, dismemberment or corpses. Defeated players respawn.
+- No player-written text, chat, HTTP requests, `loadstring` or third-party asset `require`s.
+- Realistic firearms and medical injuries still need declaring in the Maturity & Compliance questionnaire (Creator Dashboard > your experience > Audience). Answer it honestly for violence, blood (if you turn it on) and realistic weapons.
+- `M4A1` and `G17` are real-world model names. Rename them in `Weapons/Config.luau` if you want to avoid trademarked names.
 
 ## Development
 

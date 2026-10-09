@@ -8,9 +8,9 @@ export type MedDef = {
 	resistance: number?, -- peripheral resistance adjustment at peak
 	peak: number,
 	duration: number,
-	maxDose: number, -- doses in system before overdose risk
-	overdose: string?, -- "Opioid" | "Tachy" | "Hypotension" | "Sedation"
-	opioid: number?, -- respiratory depression at peak (0-1)
+	maxDose: number, -- doses in system before reaction risk
+	reaction: string?, -- "Breathing" | "Tachy" | "Hypotension" | "Sedation"
+	respDepression: number?, -- respiratory depression at peak (0-1)
 	coagulation: number?, -- bleeding reduction at peak (0-1)
 	antiarrhythmic: boolean?,
 	vasopressor: boolean?,
@@ -21,10 +21,10 @@ export type MedDef = {
 }
 
 local Medications: { [string]: MedDef } = {
-	Painkillers = { name = "Painkillers", pain = 0.3, peak = 60, duration = 600, maxDose = 4, route = "Oral" },
-	CWMP = { name = "Combat wound med pack", pain = 0.45, peak = 45, duration = 900, maxDose = 2, route = "Oral" },
-	Penthrox = {
-		name = "Penthrox",
+	PainRelief = { name = "Pain Relief Tablets", pain = 0.3, peak = 60, duration = 600, maxDose = 4, route = "Oral" },
+	CWMP = { name = "Combat Med Pack", pain = 0.45, peak = 45, duration = 900, maxDose = 2, route = "Oral" },
+	PainInhaler = {
+		name = "Pain Relief Inhaler",
 		pain = 0.5,
 		hr = { -2, 0 },
 		peak = 15,
@@ -32,80 +32,80 @@ local Medications: { [string]: MedDef } = {
 		maxDose = 3,
 		route = "Inhaled",
 	},
-	Morphine = {
-		name = "Morphine",
+	Analgesic = {
+		name = "Analgesic",
 		pain = 0.8,
 		hr = { -15, -10 },
 		resistance = -10,
 		peak = 30,
 		duration = 1200,
 		maxDose = 3,
-		overdose = "Opioid",
-		opioid = 0.3,
+		reaction = "Breathing",
+		respDepression = 0.3,
 		route = "IM",
-		incompatible = { "Fentanyl" },
+		incompatible = { "StrongAnalgesic" },
 	},
-	Fentanyl = {
-		name = "Fentanyl",
+	StrongAnalgesic = {
+		name = "Strong Analgesic",
 		pain = 0.95,
 		hr = { -15, -10 },
 		resistance = -10,
 		peak = 20,
 		duration = 900,
 		maxDose = 2,
-		overdose = "Opioid",
-		opioid = 0.45,
+		reaction = "Breathing",
+		respDepression = 0.45,
 		route = "IV",
-		incompatible = { "Morphine" },
+		incompatible = { "Analgesic" },
 	},
-	Nalbuphine = {
-		name = "Nalbuphine",
+	MildAnalgesic = {
+		name = "Mild Analgesic",
 		pain = 0.6,
 		hr = { -5, -3 },
 		peak = 30,
 		duration = 1200,
 		maxDose = 3,
-		overdose = "Opioid",
-		opioid = 0.1,
+		reaction = "Breathing",
+		respDepression = 0.1,
 		route = "IV",
 	},
-	Ketamine = {
-		name = "Ketamine",
+	FieldAnesthetic = {
+		name = "Field Anesthetic",
 		pain = 0.8,
 		hr = { 5, 10 },
 		resistance = 10,
 		peak = 20,
 		duration = 900,
 		maxDose = 3,
-		overdose = "Sedation",
+		reaction = "Sedation",
 		route = "IV",
 	},
-	Naloxone = { name = "Naloxone", peak = 5, duration = 600, maxDose = 4, route = "IV" },
-	Epinephrine = {
-		name = "Epinephrine",
+	ReversalSpray = { name = "Reversal Spray", peak = 5, duration = 600, maxDose = 4, route = "IV" },
+	Adrenaline = {
+		name = "Adrenaline",
 		hr = { 10, 20 },
 		resistance = 10,
 		peak = 10,
 		duration = 180,
 		maxDose = 10,
-		overdose = "Tachy",
+		reaction = "Tachy",
 		vasopressor = true,
 		wakes = true,
 		route = "IV",
 	},
-	Norepinephrine = {
-		name = "Norepinephrine",
+	PressureBooster = {
+		name = "Pressure Booster",
 		hr = { 5, 10 },
 		resistance = 30,
 		peak = 15,
 		duration = 300,
 		maxDose = 6,
-		overdose = "Tachy",
+		reaction = "Tachy",
 		vasopressor = true,
 		route = "IV",
 	},
-	Phenylephrine = {
-		name = "Phenylephrine",
+	PressureSupport = {
+		name = "Pressure Support",
 		hr = { -8, -4 },
 		resistance = 35,
 		peak = 15,
@@ -114,27 +114,27 @@ local Medications: { [string]: MedDef } = {
 		vasopressor = true,
 		route = "IV",
 	},
-	Nitroglycerin = {
-		name = "Nitroglycerin",
+	PressureReducer = {
+		name = "Pressure Reducer",
 		hr = { 3, 8 },
 		resistance = -25,
 		peak = 15,
 		duration = 300,
 		maxDose = 4,
-		overdose = "Hypotension",
+		reaction = "Hypotension",
 		route = "IV",
 	},
-	Atropine = {
-		name = "Atropine",
+	HeartRateBooster = {
+		name = "Heart Rate Booster",
 		hr = { 20, 30 },
 		peak = 10,
 		duration = 300,
 		maxDose = 6,
-		overdose = "Tachy",
+		reaction = "Tachy",
 		route = "IV",
 	},
-	Amiodarone = {
-		name = "Amiodarone",
+	RhythmStabiliser = {
+		name = "Rhythm Stabiliser",
 		hr = { -10, -5 },
 		peak = 15,
 		duration = 600,
@@ -142,8 +142,8 @@ local Medications: { [string]: MedDef } = {
 		antiarrhythmic = true,
 		route = "IV",
 	},
-	Lidocaine = {
-		name = "Lidocaine",
+	MildRhythmStabiliser = {
+		name = "Mild Rhythm Stabiliser",
 		pain = 0.15,
 		hr = { -6, -3 },
 		peak = 15,
@@ -152,10 +152,24 @@ local Medications: { [string]: MedDef } = {
 		antiarrhythmic = true,
 		route = "IV",
 	},
-	TXA = { name = "Tranexamic acid", coagulation = 0.35, peak = 30, duration = 900, maxDose = 4, route = "IV" },
-	EACA = { name = "Aminocaproic acid", coagulation = 0.45, peak = 30, duration = 900, maxDose = 4, route = "IV" },
-	Etomidate = {
-		name = "Etomidate",
+	ClottingAgent = {
+		name = "Clotting Agent",
+		coagulation = 0.35,
+		peak = 30,
+		duration = 900,
+		maxDose = 4,
+		route = "IV",
+	},
+	StrongClottingAgent = {
+		name = "Strong Clotting Agent",
+		coagulation = 0.45,
+		peak = 30,
+		duration = 900,
+		maxDose = 4,
+		route = "IV",
+	},
+	SurgicalSedative = {
+		name = "Surgical Sedative",
 		hr = { -5, 0 },
 		resistance = -5,
 		peak = 5,
@@ -164,19 +178,19 @@ local Medications: { [string]: MedDef } = {
 		sedative = true,
 		route = "IV",
 	},
-	Lorazepam = {
-		name = "Lorazepam",
+	Sedative = {
+		name = "Sedative",
 		hr = { -8, -4 },
 		peak = 10,
 		duration = 600,
 		maxDose = 2,
-		overdose = "Opioid",
-		opioid = 0.15,
+		reaction = "Breathing",
+		respDepression = 0.15,
 		sedative = true,
 		route = "IV",
 	},
-	Flumazenil = { name = "Flumazenil", peak = 5, duration = 300, maxDose = 4, route = "IV" },
-	Carbonate = { name = "Ammonium carbonate", peak = 1, duration = 30, maxDose = 10, route = "Inhaled" },
+	SedativeReversal = { name = "Sedative Reversal", peak = 5, duration = 300, maxDose = 4, route = "IV" },
+	SmellingSalts = { name = "Smelling Salts", peak = 1, duration = 30, maxDose = 10, route = "Inhaled" },
 }
 
 return Medications

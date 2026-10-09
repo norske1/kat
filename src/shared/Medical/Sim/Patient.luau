@@ -69,7 +69,7 @@ function Patient.new(options: { bloodType: string?, seed: number? }?)
 			occluded = false,
 			headTilt = false,
 			recovery = false,
-			device = nil, -- "Guedel" | "KingLT"
+			device = nil, -- "Guedel" | "AirwayTube"
 			nextCheck = Config.AirwayCheckInterval,
 		},
 		breathing = {
@@ -89,7 +89,7 @@ function Patient.new(options: { bloodType: string?, seed: number? }?)
 			pain = 0,
 			hr = 0,
 			resistance = 0,
-			opioid = 0,
+			respDepression = 0,
 			coagulation = 0,
 			sedation = 0,
 			anesthesia = 0,

@@ -28,7 +28,7 @@ Dummies.Scenarios = {
 		state.airway.occluded = true
 		state.parts.RightArm.fracture = 1
 	end,
-	-- Cardiac arrest in VF: CPR, AED, epinephrine/amiodarone.
+	-- Cardiac arrest in VF: CPR, AED, adrenaline/rhythm stabiliser.
 	CardiacArrest = function(state)
 		Damage.apply(state, "Torso", 20, "Bullet")
 		state.bloodVolume = 4.8
@@ -42,10 +42,10 @@ Dummies.Scenarios = {
 		state.breathing.tension = true
 		state.bloodVolume = 4.6
 	end,
-	-- Opioid overdose with respiratory depression.
-	Overdose = function(state)
+	-- Respiratory depression with respiratory depression.
+	Overmedicated = function(state)
 		for _ = 1, 5 do
-			Pharmacy.administer(state, "Morphine", state.rng)
+			Pharmacy.administer(state, "Analgesic", state.rng)
 		end
 		state.knockedOut = true
 	end,

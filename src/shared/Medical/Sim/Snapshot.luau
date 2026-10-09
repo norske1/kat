@@ -315,7 +315,7 @@ function Snapshot.selfEffects(p)
 		heartRate = p.heartRate,
 		arrest = p.arrest ~= nil,
 		causes = p.unconsciousCauses,
-		opioid = p.effects.opioid,
+		respDepression = p.effects.respDepression,
 		armInjury = Patient.armImpairment(p),
 	}
 end

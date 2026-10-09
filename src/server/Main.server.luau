@@ -171,7 +171,7 @@ if Config.SpawnTrainingDummies and (RunService:IsStudio() or Config.AllowDummies
 	task.defer(function()
 		local spawnLocation = workspace:FindFirstChildOfClass("SpawnLocation")
 		local origin = if spawnLocation then spawnLocation.CFrame else CFrame.new(0, 3, 0)
-		local scenarios = { "GunshotLeg", "Unconscious", "CardiacArrest", "Blast", "Overdose" }
+		local scenarios = { "GunshotLeg", "Unconscious", "CardiacArrest", "Blast", "Overmedicated" }
 		for i, scenario in scenarios do
 			Dummies.spawn(origin * CFrame.new((i - 3) * 7, 3, -16), scenario)
 		end

@@ -320,7 +320,7 @@ function MedicalService.register(model: Model, player: Player?, options: { blood
 	)
 
 	local root = MedicalService.rootOf(record)
-	if root then
+	if root and Config.BloodEffects then
 		record.bloodEmitter = makeBloodEmitter(root)
 	end
 	record.prompt = makePrompt(record)

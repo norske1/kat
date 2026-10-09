@@ -82,7 +82,7 @@ local function updateConsciousness(p, dt: number)
 		p.nextWakeCheck = Config.WakeCheckInterval
 		if p.knockedOut then
 			local epi = math.min(1, p.effects.vasopressor)
-			Simulation.tryWake(p, epi * Config.EpinephrineWakeBonus)
+			Simulation.tryWake(p, epi * Config.AdrenalineWakeBonus)
 		end
 	end
 	local causes = Simulation.unconsciousCauses(p)
@@ -147,7 +147,7 @@ function Simulation.step(p, dt: number)
 	updateConsciousness(p, dt)
 
 	if p.bloodVolume <= Config.BleedoutVolume then
-		Patient.kill(p, "Exsanguination")
+		Patient.kill(p, "Blood loss")
 	elseif Config.SpO2DieEnabled and p.spo2 < Config.SpO2DieValue then
 		Patient.kill(p, "Hypoxia")
 	end

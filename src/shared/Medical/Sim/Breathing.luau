@@ -46,7 +46,7 @@ function Breathing.updateAirway(p, dt: number)
 		a.obstructed = true
 		Patient.event(p, "AirwayObstructed")
 	end
-	local protected = a.device == "KingLT" or a.recovery
+	local protected = a.device == "AirwayTube" or a.recovery
 	if not a.occluded and not protected and rng:chance(Config.OcclusionChance) then
 		a.occluded = true
 		Patient.event(p, "AirwayOccluded")
@@ -90,10 +90,10 @@ end
 function Breathing.computeVentilation(p): number
 	local b = p.breathing
 	local bvm = p.time < b.bvmUntil
-	local spontaneous = not p.arrest and not b.opioidArrest
+	local spontaneous = not p.arrest and not b.respArrest
 	local v = 0
 	if spontaneous then
-		v = 1 - p.effects.opioid * 0.8
+		v = 1 - p.effects.respDepression * 0.8
 		if Breathing.airwayBlocked(p) then
 			v = 0
 		end
@@ -151,7 +151,7 @@ function Breathing.updateOxygen(p, dt: number)
 	if p.arrest or v <= 0.05 and not (p.time < p.breathing.bvmUntil) then
 		p.respRate = 0
 	else
-		local rr = 14 * math.sqrt(math.max(p.heartRate, 40) / 80) * (1 - p.effects.opioid * 0.6)
+		local rr = 14 * math.sqrt(math.max(p.heartRate, 40) / 80) * (1 - p.effects.respDepression * 0.6)
 		rr += p.breathing.ptx * 2 + (if p.breathing.tension or p.breathing.hemo then 8 else 0)
 		if p.spo2 < 90 then
 			rr += (90 - p.spo2) * 0.3

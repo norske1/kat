@@ -291,10 +291,10 @@ define({
 
 define({
 	id = "CheckCoagulation",
-	name = "Test Coagulation (CoagSense)",
+	name = "Test Coagulation",
 	category = "Examine",
 	parts = ARMS,
-	items = { "CoagSense" },
+	items = { "ClotTester" },
 	level = 1,
 	time = 4,
 	apply = function(ctx)
@@ -363,8 +363,8 @@ for bandageId, displayName in Wounds.BandageNames do
 		name = displayName,
 		category = "Bandage",
 		items = { bandageId },
-		level = if bandageId == "QuikClot" then 1 else 0,
-		time = if bandageId == "PackingBandage" then 4 elseif bandageId == "QuikClot" then 3 else 5,
+		level = if bandageId == "HemostaticGauze" then 1 else 0,
+		time = if bandageId == "PackingBandage" then 4 elseif bandageId == "HemostaticGauze" then 3 else 5,
 		condition = function(ctx)
 			if #ctx.patient.parts[ctx.part].wounds == 0 then
 				return false, "No open wounds"
@@ -483,12 +483,12 @@ local function giveMed(medId: string)
 end
 
 local simpleMeds = {
-	{ id = "EpinephrineAuto", med = "Epinephrine", name = "Epinephrine autoinjector", parts = LIMBS },
-	{ id = "MorphineAuto", med = "Morphine", name = "Morphine autoinjector", parts = LIMBS },
-	{ id = "Naloxone", med = "Naloxone", name = "Naloxone (nasal)", parts = HEAD },
-	{ id = "Painkillers", med = "Painkillers", name = "Painkillers", parts = HEAD, conscious = true },
-	{ id = "CWMP", med = "CWMP", name = "Combat wound med pack", parts = HEAD, conscious = true },
-	{ id = "Penthrox", med = "Penthrox", name = "Penthrox inhaler", parts = HEAD, conscious = true },
+	{ id = "AdrenalineAuto", med = "Adrenaline", name = "Adrenaline Autoinjector", parts = LIMBS },
+	{ id = "AnalgesicAuto", med = "Analgesic", name = "Analgesic Autoinjector", parts = LIMBS },
+	{ id = "ReversalSpray", med = "ReversalSpray", name = "Reversal Spray (nasal)", parts = HEAD },
+	{ id = "PainRelief", med = "PainRelief", name = "Pain Relief Tablets", parts = HEAD, conscious = true },
+	{ id = "CWMP", med = "CWMP", name = "Combat Med Pack", parts = HEAD, conscious = true },
+	{ id = "PainInhaler", med = "PainInhaler", name = "Pain Relief Inhaler", parts = HEAD, conscious = true },
 }
 
 for _, m in simpleMeds do
@@ -510,18 +510,18 @@ for _, m in simpleMeds do
 end
 
 define({
-	id = "Carbonate",
-	name = "Ammonium Carbonate",
+	id = "SmellingSalts",
+	name = "Smelling Salts",
 	category = "Medication",
 	parts = HEAD,
-	items = { "Carbonate" },
+	items = { "SmellingSalts" },
 	time = 2,
 	allowSelf = false,
 	condition = unconscious,
 	apply = function(ctx)
 		local p = ctx.patient
 		if Simulation.hasStableVitals(p) and #Simulation.unconsciousCauses(p) == 1 and p.knockedOut then
-			if ctx.rng:chance(Config.CarbonateMaxChance) then
+			if ctx.rng:chance(Config.SmellingSaltsMaxChance) then
 				p.knockedOut = false
 				return "Patient is coming around"
 			end
@@ -556,21 +556,21 @@ local function needsAccess(ctx)
 end
 
 local ivMeds = {
-	Epinephrine = 1,
-	Amiodarone = 1,
-	Lidocaine = 1,
-	Atropine = 1,
-	TXA = 1,
-	EACA = 2,
-	Ketamine = 1,
-	Fentanyl = 2,
-	Nalbuphine = 1,
-	Norepinephrine = 1,
-	Phenylephrine = 1,
-	Nitroglycerin = 1,
-	Etomidate = 2,
-	Lorazepam = 2,
-	Flumazenil = 2,
+	Adrenaline = 1,
+	RhythmStabiliser = 1,
+	MildRhythmStabiliser = 1,
+	HeartRateBooster = 1,
+	ClottingAgent = 1,
+	StrongClottingAgent = 2,
+	FieldAnesthetic = 1,
+	StrongAnalgesic = 2,
+	MildAnalgesic = 1,
+	PressureBooster = 1,
+	PressureSupport = 1,
+	PressureReducer = 1,
+	SurgicalSedative = 2,
+	Sedative = 2,
+	SedativeReversal = 2,
 }
 local ivOrder = {}
 for medId in ivMeds do
@@ -587,7 +587,7 @@ for _, medId in ivOrder do
 		items = { medId },
 		level = ivMeds[medId],
 		time = 3,
-		allowSelf = medId ~= "Etomidate" and medId ~= "Lorazepam",
+		allowSelf = medId ~= "SurgicalSedative" and medId ~= "Sedative",
 		condition = needsAccess,
 		apply = giveMed(medId),
 	})
@@ -793,7 +793,7 @@ local function airwayDevice(id: string, label: string, level: number)
 		parts = HEAD,
 		items = { id },
 		level = level,
-		time = if id == "KingLT" then 6 else 3,
+		time = if id == "AirwayTube" then 6 else 3,
 		allowSelf = false,
 		condition = function(ctx)
 			local a = ctx.patient.airway
@@ -814,7 +814,7 @@ local function airwayDevice(id: string, label: string, level: number)
 	})
 end
 airwayDevice("Guedel", "Guedel Tube", 0)
-airwayDevice("KingLT", "KingLT", 1)
+airwayDevice("AirwayTube", "Airway Tube", 1)
 
 define({
 	id = "RemoveAirwayDevice",
@@ -836,16 +836,16 @@ define({
 
 define({
 	id = "Suction",
-	name = "Suction Airway (Accuvac)",
+	name = "Suction Airway",
 	category = "Airway",
 	parts = HEAD,
-	items = { "Accuvac" },
+	items = { "SuctionPump" },
 	level = 1,
 	time = 6,
 	allowSelf = false,
 	condition = function(ctx)
-		if ctx.patient.airway.device == "KingLT" then
-			return false, "Remove KingLT first"
+		if ctx.patient.airway.device == "AirwayTube" then
+			return false, "Remove the airway tube first"
 		end
 		return true
 	end,

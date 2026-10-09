@@ -1,5 +1,5 @@
 --!nonstrict
--- Medication absorption, effect curves, overdoses and IV/IO fluid flow.
+-- Medication absorption, effect curves, adverse reactions and IV/IO fluid flow.
 local Medical = script.Parent.Parent
 local Config = require(Medical.Config)
 local Medications = require(Medical.Medications)
@@ -41,24 +41,24 @@ function Pharmacy.concentration(p, medId: string): number
 	return total
 end
 
-local function overdose(p, def, rng)
-	local kind = def.overdose
+local function reaction(p, def, rng)
+	local kind = def.reaction
 	if not kind then
 		return
 	end
-	Patient.log(p, def.name .. " overdose")
-	if kind == "Opioid" then
-		p.breathing.opioidArrest = true
-		Patient.event(p, "Overdose", def.name)
+	Patient.log(p, def.name .. " adverse reaction")
+	if kind == "Breathing" then
+		p.breathing.respArrest = true
+		Patient.event(p, "Overmedicated", def.name)
 	elseif kind == "Tachy" then
 		if rng:chance(0.5) then
-			p.pendingArrest = { cause = def.name .. " overdose", rhythm = "VT" }
+			p.pendingArrest = { cause = def.name .. " adverse reaction", rhythm = "VT" }
 		else
 			p.bradycardia -= 0 -- no-op, keeps symmetry
-			p.tachyOverdose = (p.tachyOverdose or 0) + 60
+			p.tachyReaction = (p.tachyReaction or 0) + 60
 		end
 	elseif kind == "Hypotension" then
-		p.hypotensionOverdose = (p.hypotensionOverdose or 0) + 30
+		p.hypotensionReaction = (p.hypotensionReaction or 0) + 30
 	elseif kind == "Sedation" then
 		p.knockedOut = true
 	end
@@ -72,17 +72,17 @@ function Pharmacy.administer(p, medId: string, rng)
 		hr = def.hr[1] + (def.hr[2] - def.hr[1]) * rng:next()
 	end
 
-	if medId == "Naloxone" then
+	if medId == "ReversalSpray" then
 		for i = #p.meds, 1, -1 do
 			local m = Medications[p.meds[i].id]
-			if m.opioid and not m.sedative then
+			if m.respDepression and not m.sedative then
 				table.remove(p.meds, i)
 			end
 		end
-		p.breathing.opioidArrest = false
-	elseif medId == "Flumazenil" then
+		p.breathing.respArrest = false
+	elseif medId == "SedativeReversal" then
 		for i = #p.meds, 1, -1 do
-			if p.meds[i].id == "Lorazepam" then
+			if p.meds[i].id == "Sedative" then
 				table.remove(p.meds, i)
 			end
 		end
@@ -93,7 +93,7 @@ function Pharmacy.administer(p, medId: string, rng)
 	if def.incompatible then
 		for _, other in def.incompatible do
 			if Pharmacy.dosesInSystem(p, other) > 0 then
-				overdose(p, def, rng)
+				reaction(p, def, rng)
 				break
 			end
 		end
@@ -102,14 +102,14 @@ function Pharmacy.administer(p, medId: string, rng)
 	if doses > def.maxDose then
 		local excess = doses - def.maxDose
 		if rng:chance(math.min(1, 0.35 * excess)) then
-			overdose(p, def, rng)
+			reaction(p, def, rng)
 		end
 	end
 end
 
 function Pharmacy.updateMeds(p)
 	local e = p.effects
-	e.pain, e.hr, e.resistance, e.opioid, e.coagulation = 0, 0, 0, 0, 0
+	e.pain, e.hr, e.resistance, e.respDepression, e.coagulation = 0, 0, 0, 0, 0
 	e.sedation, e.anesthesia, e.antiarrhythmic, e.vasopressor = 0, 0, 0, 0
 	for i = #p.meds, 1, -1 do
 		local dose = p.meds[i]
@@ -122,7 +122,7 @@ function Pharmacy.updateMeds(p)
 			e.pain += (def.pain or 0) * f
 			e.hr += dose.hr * f
 			e.resistance += (def.resistance or 0) * f
-			e.opioid += (def.opioid or 0) * f
+			e.respDepression += (def.respDepression or 0) * f
 			e.coagulation += (def.coagulation or 0) * f
 			if def.antiarrhythmic then
 				e.antiarrhythmic += f
@@ -130,25 +130,25 @@ function Pharmacy.updateMeds(p)
 			if def.vasopressor then
 				e.vasopressor += f
 			end
-			if dose.id == "Lorazepam" and f > 0.2 then
+			if dose.id == "Sedative" and f > 0.2 then
 				e.sedation = math.max(e.sedation, f)
-			elseif dose.id == "Etomidate" and f > 0.2 then
+			elseif dose.id == "SurgicalSedative" and f > 0.2 then
 				e.anesthesia = math.max(e.anesthesia, f)
-			elseif dose.id == "Ketamine" then
+			elseif dose.id == "FieldAnesthetic" then
 				e.anesthesia = math.max(e.anesthesia, f * 0.5)
 			end
 		end
 	end
 	e.pain = math.min(e.pain, 1)
-	e.opioid = math.min(e.opioid, 1)
+	e.respDepression = math.min(e.respDepression, 1)
 	e.coagulation = math.min(e.coagulation, 0.8)
-	if p.tachyOverdose and p.tachyOverdose > 0 then
+	if p.tachyReaction and p.tachyReaction > 0 then
 		e.hr += 60
-		p.tachyOverdose -= 1
+		p.tachyReaction -= 1
 	end
-	if p.hypotensionOverdose and p.hypotensionOverdose > 0 then
+	if p.hypotensionReaction and p.hypotensionReaction > 0 then
 		e.resistance -= 40
-		p.hypotensionOverdose -= 1
+		p.hypotensionReaction -= 1
 	end
 end
 

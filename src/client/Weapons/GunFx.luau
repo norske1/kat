@@ -1,6 +1,6 @@
 --!nonstrict
 -- Client-side weapon visuals: muzzle flash, simulated bullets with tracers (same ballistics as the server),
--- impacts, bullet holes, blood, supersonic cracks and gunshots delayed by the speed of sound.
+-- impacts, bullet holes, hit puffs, supersonic cracks and gunshots delayed by the speed of sound.
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Weapons = Medical:WaitForChild("Weapons")
 local Sounds = require(Medical.Sounds)
+local MedicalConfig = require(Medical.Config)
 local WeaponConfig = require(Weapons.Config)
 local Ballistics = require(Weapons.Ballistics)
 
@@ -104,7 +105,8 @@ function GunFx.impact(position: Vector3, normal: Vector3?, kind: number, color: 
 	end
 	local n = normal :: Vector3
 	if kind == 2 then
-		local point = burst(position, n, Color3.fromRGB(110, 0, 0), 14, true)
+		local hitColor = if MedicalConfig.BloodEffects then Color3.fromRGB(110, 0, 0) else Color3.fromRGB(200, 200, 190)
+		local point = burst(position, n, hitColor, if MedicalConfig.BloodEffects then 14 else 6, true)
 		Sounds.play("ImpactFlesh", point)
 		return
 	end

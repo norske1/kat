@@ -124,10 +124,10 @@ function Effects.render(dt: number)
 	for _, f in vignette do
 		f.BackgroundTransparency = 1 - vignetteAlpha
 	end
-	blur.Size = math.clamp(d.bloodLoss * 8 + d.hypoxia * 14 + d.opioid * 6 + painFlash * 4, 0, 24)
+	blur.Size = math.clamp(d.bloodLoss * 8 + d.hypoxia * 14 + d.respDepression * 6 + painFlash * 4, 0, 24)
 	color.Saturation = -math.clamp(d.bloodLoss * 0.8 + d.hypoxia * 0.6, 0, 1)
 	color.Brightness = -math.clamp(d.hypoxia * 0.25 + d.bloodLoss * 0.1, 0, 0.4)
-	color.Contrast = math.clamp(d.opioid * 0.2, 0, 0.3)
+	color.Contrast = math.clamp(d.respDepression * 0.2, 0, 0.3)
 end
 
 return Effects

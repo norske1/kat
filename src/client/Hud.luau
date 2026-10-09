@@ -197,7 +197,7 @@ function Hud.setDebug(allowed: boolean)
 		{ "Casualty: airway", "dummy", "Unconscious" },
 		{ "Casualty: VF arrest", "dummy", "CardiacArrest" },
 		{ "Casualty: blast", "dummy", "Blast" },
-		{ "Casualty: overdose", "dummy", "Overdose" },
+		{ "Casualty: over-medicated", "dummy", "Overmedicated" },
 	}
 	for i, b in buttons do
 		local btn = Ui.button({

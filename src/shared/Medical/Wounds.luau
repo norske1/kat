@@ -71,7 +71,7 @@ export type BandageDef = {
 }
 
 -- Bandage behaviour mirrors ACE: packing is strong but reopens, elastic is weak but holds,
--- QuikClot is good everywhere and almost never reopens.
+-- HemostaticGauze is good everywhere and almost never reopens.
 Wounds.Bandages = {
 	FieldDressing = {
 		effectiveness = {
@@ -142,7 +142,7 @@ Wounds.Bandages = {
 		},
 		reopenDelay = { 600, 1200 },
 	},
-	QuikClot = {
+	HemostaticGauze = {
 		effectiveness = {
 			Abrasion = 1,
 			Avulsion = 1.2,
@@ -171,7 +171,7 @@ Wounds.BandageNames = {
 	FieldDressing = "Basic Bandage",
 	PackingBandage = "Packing Bandage",
 	ElasticBandage = "Elastic Bandage",
-	QuikClot = "QuikClot",
+	HemostaticGauze = "Hemostatic gauze",
 } :: { [string]: string }
 
 Wounds.Fractures = {

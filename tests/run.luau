@@ -168,10 +168,10 @@ test("occlusion blocks devices until suctioned", function()
 	p.knockedOut = true
 	run(p, 2)
 	p.airway.occluded = true
-	local ok, reason = act(p, "InsertKingLT", "Head")
+	local ok, reason = act(p, "InsertAirwayTube", "Head")
 	expect(not ok and reason:find("occluded"), tostring(reason))
 	expect(act(p, "Suction", "Head"))
-	expect(act(p, "InsertKingLT", "Head"))
+	expect(act(p, "InsertAirwayTube", "Head"))
 end)
 
 test("tension pneumothorax needs seal + decompression", function()
@@ -245,11 +245,11 @@ test("hemorrhagic arrest needs volume before ROSC", function()
 	for _ = 1, 20 do
 		p.cpr = { level = 2 }
 		act(p, "Suction", "Head")
-		act(p, "InsertKingLT", "Head")
+		act(p, "InsertAirwayTube", "Head")
 		act(p, "UseBVM", "Head")
 		run(p, 15)
-		if Pharmacy.concentration(p, "Epinephrine") < 0.3 then
-			act(p, "PushEpinephrine", "Torso")
+		if Pharmacy.concentration(p, "Adrenaline") < 0.3 then
+			act(p, "PushAdrenaline", "Torso")
 		end
 		local _, cprText = act(p, "CPR", "Torso")
 		lastText = cprText
@@ -283,22 +283,22 @@ test("CPR slows the arrest timer", function()
 	expect(p.alive, "should still be alive with CPR")
 end)
 
-test("opioid overdose depresses breathing; naloxone reverses", function()
+test("respiratory depression depresses breathing; reversal spray reverses", function()
 	local p = fresh(3)
 	for _ = 1, 6 do
-		Pharmacy.administer(p, "Morphine", p.rng)
+		Pharmacy.administer(p, "Analgesic", p.rng)
 	end
 	run(p, 120)
-	expect(p.breathing.opioidArrest or p.respRate < 10, "rr " .. p.respRate)
-	Pharmacy.administer(p, "Naloxone", p.rng)
+	expect(p.breathing.respArrest or p.respRate < 10, "rr " .. p.respRate)
+	Pharmacy.administer(p, "ReversalSpray", p.rng)
 	run(p, 5)
-	expect(not p.breathing.opioidArrest)
-	expect(Pharmacy.dosesInSystem(p, "Morphine") == 0)
+	expect(not p.breathing.respArrest)
+	expect(Pharmacy.dosesInSystem(p, "Analgesic") == 0)
 end)
 
 test("medication ramps to peak then decays", function()
 	local p = fresh()
-	Pharmacy.administer(p, "Epinephrine", Rng.new(1))
+	Pharmacy.administer(p, "Adrenaline", Rng.new(1))
 	run(p, 5)
 	local early = p.effects.hr
 	run(p, 6)
@@ -325,7 +325,7 @@ test("tourniquet blocks IV flow on that limb", function()
 	local p = fresh()
 	act(p, "IV16", "LeftArm")
 	act(p, "ApplyTourniquet", "LeftArm")
-	local ok, reason = act(p, "PushEpinephrine", "Torso")
+	local ok, reason = act(p, "PushAdrenaline", "Torso")
 	expect(not ok and reason:find("access"), tostring(reason))
 end)
 
@@ -348,7 +348,7 @@ test("compound fracture surgical pathway", function()
 	ok, reason = act(p, "Incision", "LeftLeg")
 	expect(not ok and reason:find("anesthesia"), tostring(reason))
 	act(p, "IV16", "RightArm")
-	act(p, "PushEtomidate", "Torso")
+	act(p, "PushSurgicalSedative", "Torso")
 	run(p, 6)
 	expect(not p.conscious, "should be anesthetised")
 	for _, id in { "Incision", "ExposeFracture", "IrrigateWound", "OpenReduction" } do

@@ -32,7 +32,7 @@ function Cardiac.pickRhythm(p, forced: string?): string
 	if p.bloodVolume < Config.AsystoleBloodThreshold then
 		return "Asystole"
 	end
-	if p.breathing.tamponade > 0 or Pharmacy.concentration(p, "Nitroglycerin") > 0.1 then
+	if p.breathing.tamponade > 0 or Pharmacy.concentration(p, "PressureReducer") > 0.1 then
 		return "PEA"
 	end
 	if rng:chance(Config.PEAChance) then
@@ -84,8 +84,8 @@ function Cardiac.reversibleCauses(p): { string }
 	if p.hemolysis >= Config.IncompatibleBloodArrestThreshold then
 		table.insert(causes, "Transfusion reaction")
 	end
-	if p.breathing.opioidArrest then
-		table.insert(causes, "Opioid overdose")
+	if p.breathing.respArrest then
+		table.insert(causes, "Respiratory depression")
 	end
 	return causes
 end
@@ -125,7 +125,7 @@ function Cardiac.cprCycle(p, medicLevel: number): (boolean, string)
 		return false, "No ROSC - " .. causes[1]
 	end
 	local chance = (Config.CPRSuccessChance[medicLevel] or Config.CPRSuccessChance[0]) * (0.4 + 0.6 * bloodFactor(p))
-	local epi = math.min(1, Pharmacy.concentration(p, "Epinephrine"))
+	local epi = math.min(1, Pharmacy.concentration(p, "Adrenaline"))
 	if Cardiac.isShockable(arrest.rhythm) then
 		chance *= 0.15
 	elseif arrest.rhythm == "Asystole" then
@@ -163,7 +163,7 @@ function Cardiac.shock(p, manual: boolean): (boolean, string)
 	arrest.shocks += 1
 	local chance = Config.AEDBaseChance * (0.4 + 0.6 * bloodFactor(p))
 	chance += math.min(1, p.effects.antiarrhythmic) * 0.25
-	chance += math.min(1, Pharmacy.concentration(p, "Epinephrine")) * 0.1
+	chance += math.min(1, Pharmacy.concentration(p, "Adrenaline")) * 0.1
 	if arrest.shocks >= 3 and p.effects.antiarrhythmic < 0.2 then
 		chance *= 0.5 -- refractory VF without amiodarone/lidocaine
 	end
@@ -204,7 +204,7 @@ function Cardiac.update(p, dt: number)
 			Cardiac.enterArrest(p, "Tachycardia", "VT")
 		elseif p.spo2 < Config.SpO2CardiacArrest then
 			Cardiac.enterArrest(p, "Hypoxia")
-		elseif p.breathing.opioidArrest and p.spo2 < 80 then
+		elseif p.breathing.respArrest and p.spo2 < 80 then
 			Cardiac.enterArrest(p, "Respiratory arrest")
 		end
 		return
