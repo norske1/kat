@@ -707,6 +707,41 @@ test("chat: local range and radio channels", function()
 	expect(Comms.canHear("squad", down, down, cfg), "always see your own message")
 end)
 
+test("pings: who sees them and limits", function()
+	local Pings = Harness.require("GameMode/Pings")
+	local function ping(uid, class, squad, side)
+		return {
+			id = uid,
+			uid = uid,
+			side = side or "A",
+			squad = squad,
+			class = class,
+			scope = Pings.scope(class, squad),
+			expires = 100,
+		}
+	end
+	local function viewer(uid, class, squad, side)
+		return { uid = uid, class = class, squad = squad, side = side or "A" }
+	end
+	local member, leader, cmdr = ping(1, "Rifleman", 1), ping(2, "Squad Commander", 1), ping(3, "Commander", 0)
+	local mate, other, loner = viewer(4, "Rifleman", 1), viewer(5, "Medic", 2), viewer(6, "Rifleman", 0)
+	local enemy = viewer(7, "Rifleman", 1, "B")
+	expect(Pings.visible(member, mate) and not Pings.visible(member, other), "member pings: own squad only")
+	expect(Pings.visible(leader, mate) and Pings.visible(leader, other), "squad commander pings: every squad")
+	expect(Pings.visible(cmdr, loner) and Pings.visible(cmdr, other), "commander pings: everyone")
+	expect(not Pings.visible(cmdr, enemy) and not Pings.visible(leader, enemy), "never the enemy")
+	expect(Pings.visible(member, viewer(1, "Rifleman", 1)), "you see your own")
+	local list = {}
+	local limits = { Commander = 5, ["Squad Commander"] = 3, default = 2 }
+	for i = 1, 4 do
+		local p = ping(1, "Rifleman", 1)
+		p.id = i
+		Pings.add(list, p, 0, limits)
+	end
+	expect(#list == 2 and list[1].id == 3 and list[2].id == 4, "oldest pings dropped past the limit")
+	expect(Pings.prune(list, 200) and #list == 0, "expired pings removed")
+end)
+
 print(("\n%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	local process = require("@lune/process")

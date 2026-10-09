@@ -274,6 +274,18 @@ Chat uses Roblox's TextChatService (so Roblox's text filter still applies), with
 - Unconscious players can't talk or hear the radio. Whispers only reach players in local range.
 - Range and settings: `GameConfig.Chat` in `src/shared/Medical/GameMode/Config.luau`. Needs Game Settings / TextChatService `ChatVersion = TextChatService` (the default for new places).
 
+## Map, compass and pings
+
+- **Minimap** (top right): north-up, centred on you, showing the grid, objectives in their owner's colour, main bases, friendlies (green = your squad, blue = the rest of your side) and pings.
+- **Fullscreen map**: press **M**. It shows the whole battlefield with lettered/numbered grid squares and player names. Left click places a ping, right click clears your pings. The main menu moved to **P**.
+- **Compass** (top centre): bearing, your grid square, and pings marked on the strip.
+- **Pings**: press **T** to ping where you're looking. Pings show on the map, minimap, compass and in the world with a distance.
+  - Squad members' pings: only their squad sees them.
+  - Squad Commander pings: every squad on the side.
+  - Commander pings: everyone on the side. Enemies never see your pings.
+  - Pings last 45 seconds. Each player has a limit (Commander 5, Squad Commander 3, others 2), and the oldest is replaced.
+- Settings: `GameConfig.Map` in `src/shared/Medical/GameMode/Config.luau`.
+
 ## Roblox content and maturity
 
 - Medications use fictional game names (Analgesic, Adrenaline, Clotting Agent, Reversal Spray...), not real drug or brand names. Equipment brand names were replaced with generic ones (Hemostatic Gauze, Airway Tube, Suction Pump, Clot Tester).

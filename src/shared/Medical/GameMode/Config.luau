@@ -20,7 +20,7 @@ GameConfig.TickRate = 0.25 -- seconds between capture updates
 
 -- Lobby and team select: players join on the Lobby team (no character) and pick a side from the main menu.
 GameConfig.MenuTitle = "Hellbound"
-GameConfig.MenuKey = Enum.KeyCode.M -- reopens the main menu to switch teams
+GameConfig.MenuKey = Enum.KeyCode.P -- reopens the main menu to switch teams
 GameConfig.Lobby = { name = "Lobby", color = Color3.fromRGB(150, 150, 155) }
 GameConfig.MaxTeamGap = 3 -- a side can't be joined if that would put it more than this many players ahead
 GameConfig.RespawnSeconds = 5 -- after dying, before you spawn at your main again
@@ -43,6 +43,18 @@ GameConfig.Classes = {
 -- Chat: local messages reach players within LocalRange studs; the Team / Squad / Command radio channels
 -- need a Radio in the inventory of both the sender and the listener.
 GameConfig.Chat = { LocalRange = 40, UnconsciousCanTalk = false }
+
+-- Map, minimap, compass and pings. Pings: T where you look, or left click on the map (right click clears yours).
+GameConfig.Map = {
+	Key = Enum.KeyCode.M,
+	PingKey = Enum.KeyCode.T,
+	MiniSize = 210, -- pixels
+	MiniStuds = 360, -- studs across the minimap
+	Grid = 100, -- studs per grid square
+	Margin = 150, -- studs around the map's objectives and bases
+	PingLifetime = 45, -- seconds
+	MaxPings = { Commander = 5, ["Squad Commander"] = 3, default = 2 }, -- active pings per player
+}
 
 GameConfig.Sides = {
 	A = { name = "Side A", color = Color3.fromRGB(60, 130, 230) },

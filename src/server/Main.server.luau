@@ -235,6 +235,13 @@ if not radioOk then
 	warn("[KATMedical] radio / chat failed to start: " .. tostring(radioErr))
 end
 
+local pingOk, pingErr = pcall(function()
+	require(script.Parent.GameMode.PingService).init({ isDown = MedicalService.isIncapacitated })
+end)
+if not pingOk then
+	warn("[KATMedical] pings failed to start: " .. tostring(pingErr))
+end
+
 -- Give up while unconscious: respawn (the game mode charges a death ticket).
 Remotes.get("Respawn").OnServerEvent:Connect(function(player)
 	if not Config.AllowGiveUp or throttled(player) then
