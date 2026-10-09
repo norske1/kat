@@ -18,6 +18,7 @@ local Patient = require(Medical.Sim.Patient)
 local MedicalService = require(script.Parent.Parent.MedicalService)
 local ActionRunner = require(script.Parent.Parent.ActionRunner)
 local Carry = require(script.Parent.Parent.Carry)
+local CareerService = require(script.Parent.Parent.CareerService)
 
 local WeaponService = {}
 
@@ -117,6 +118,7 @@ local function applyHit(shooter: Player, model: Model, part: Instance, damage: n
 	if isFriendly(shooter, model) then
 		return
 	end
+	CareerService.noteHit(shooter, model)
 	if MedicalService.get(model) then
 		MedicalService.applyDamage(model, bodyPartName(part), damage, def.damageType)
 	elseif WeaponConfig.DamageNonMedical then

@@ -10,6 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local GameConfig = require(Medical.GameMode.Config)
 local Rules = require(Medical.GameMode.Rules)
+local Career = require(Medical.GameMode.Career)
 local Remotes = require(Medical.Remotes)
 local Ui = require(script.Parent.Ui)
 local T = Ui.Theme
@@ -17,7 +18,8 @@ local T = Ui.Theme
 local MainMenu = {}
 
 local player = Players.LocalPlayer
-local gui, mainPage, teamPage, resumeButton, status
+local gui, mainPage, teamPage, careerPage, resumeButton, status
+local careerValues = {}
 local cards = {}
 local isOpen = false
 local pending = false
@@ -56,6 +58,7 @@ end
 local function show(page: string)
 	mainPage.Visible = page == "main"
 	teamPage.Visible = page == "team"
+	careerPage.Visible = page == "career"
 	status.Text = ""
 end
 
@@ -165,6 +168,64 @@ local function build()
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
+	careerPage = Ui.make("Frame", {
+		Name = "Career",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(420, 380),
+		BackgroundTransparency = 1,
+		Visible = false,
+		Parent = gui,
+	})
+	centered({
+		Text = "MY CAREER",
+		Font = T.FontBold,
+		TextSize = 32,
+		Size = UDim2.new(1, 0, 0, 40),
+		Parent = careerPage,
+	})
+	local rows = {
+		{ "kills", "Total kills" },
+		{ "deaths", "Total deaths" },
+		{ "kd", "K/D ratio" },
+		{ "class", "Most used class" },
+		{ "time", "Time played" },
+	}
+	for i, row in rows do
+		local frame = Ui.make("Frame", {
+			Size = UDim2.new(1, 0, 0, 44),
+			Position = UDim2.fromOffset(0, 50 + (i - 1) * 52),
+			BackgroundColor3 = T.Panel,
+			Parent = careerPage,
+		}, { Ui.corner(6) })
+		Ui.label({
+			Text = row[2],
+			TextSize = 16,
+			TextColor3 = T.TextDim,
+			Size = UDim2.new(0.6, -16, 1, 0),
+			Position = UDim2.fromOffset(16, 0),
+			Parent = frame,
+		})
+		careerValues[row[1]] = Ui.label({
+			Text = "-",
+			Font = T.FontBold,
+			TextSize = 18,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Size = UDim2.new(0.4, -16, 1, 0),
+			Position = UDim2.new(0.6, 0, 0, 0),
+			Parent = frame,
+		})
+	end
+	local careerBack = Ui.button({
+		Text = "BACK",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(160, 34),
+		Position = UDim2.new(0.5, 0, 0, 316),
+		Parent = careerPage,
+	})
+	careerBack.Activated:Connect(function()
+		show("main")
+	end)
 	centered({
 		Text = GameConfig.MenuTitle,
 		Font = T.FontBold,
@@ -193,13 +254,25 @@ local function build()
 	join.Activated:Connect(function()
 		show("team")
 	end)
+	local careerButton = Ui.button({
+		Text = "MY CAREER",
+		Font = T.FontBold,
+		TextSize = 18,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(280, 40),
+		Position = UDim2.new(0.5, 0, 0, 196),
+		Parent = mainPage,
+	})
+	careerButton.Activated:Connect(function()
+		show("career")
+	end)
 	resumeButton = Ui.button({
 		Text = "RESUME",
 		Font = T.FontBold,
 		TextSize = 18,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Size = UDim2.fromOffset(280, 40),
-		Position = UDim2.new(0.5, 0, 0, 196),
+		Position = UDim2.new(0.5, 0, 0, 246),
 		Visible = false,
 		Parent = mainPage,
 	})
@@ -259,7 +332,20 @@ local function build()
 	end)
 end
 
+local function updateCareer()
+	local kills = player:GetAttribute("CareerKills") or 0
+	local deaths = player:GetAttribute("CareerDeaths") or 0
+	careerValues.kills.Text = tostring(kills)
+	careerValues.deaths.Text = tostring(deaths)
+	careerValues.kd.Text = Career.formatKd(kills, deaths)
+	careerValues.class.Text = player:GetAttribute("CareerClass") or Career.DefaultClass
+	careerValues.time.Text = Career.formatTime(player:GetAttribute("CareerSeconds") or 0)
+end
+
 local function update()
+	if careerPage.Visible then
+		updateCareer()
+	end
 	local side = mySide()
 	resumeButton.Visible = side ~= nil and player.Character ~= nil
 	for key, c in cards do

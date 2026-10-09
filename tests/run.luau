@@ -573,6 +573,22 @@ test("game mode: contest, more players, regen and tickets", function()
 	expect(math.abs(s.points[2].progress - 12.5) < 1e-6, "nothing changes after the round ends")
 end)
 
+test("career stats", function()
+	local Career = Harness.require("GameMode/Career")
+	expect(Career.formatKd(10, 4) == "2.50" and Career.formatKd(3, 0) == "3.00", "k/d")
+	expect(
+		Career.formatTime(45) == "45s" and Career.formatTime(750) == "12m" and Career.formatTime(11100) == "3h 05m",
+		"time"
+	)
+	expect(Career.mostUsedClass({}) == "Rifleman", "default class")
+	expect(Career.mostUsedClass({ Rifleman = 10, Medic = 30 }) == "Medic", "most used class")
+	local d = Career.sanitize({ kills = 5, deaths = -2, seconds = "x", classSeconds = { Medic = 3 } })
+	expect(d.kills == 5 and d.deaths == 0 and d.seconds == 0 and d.classSeconds.Medic == 3, "sanitize")
+	Career.merge(d, { kills = 1, deaths = 2, seconds = 10, classSeconds = { Medic = 1 } })
+	expect(d.kills == 6 and d.deaths == 2 and d.seconds == 10 and d.classSeconds.Medic == 4, "merge")
+	expect(Career.sanitize(nil).kills == 0, "no saved data")
+end)
+
 test("game mode: team gap limit", function()
 	local Rules = Harness.require("GameMode/Rules")
 	expect(not Rules.canJoin(8, 5, 3), "5 vs 8: can't join the team with 8")

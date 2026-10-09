@@ -178,6 +178,13 @@ if Config.SpawnTrainingDummies and (RunService:IsStudio() or Config.AllowDummies
 	end)
 end
 
+local careerOk, careerErr = pcall(function()
+	require(script.Parent.CareerService).init()
+end)
+if not careerOk then
+	warn("[KATMedical] career stats failed to start: " .. tostring(careerErr))
+end
+
 -- The game mode runs before the weapons so the lockers at its team bases exist when the locker system starts.
 local GameService = nil
 local gameOk, gameErr = pcall(function()
@@ -208,6 +215,9 @@ Remotes.get("Respawn").OnServerEvent:Connect(function(player)
 	Carry.drop(player)
 	if GameService and gameOk then
 		GameService.giveUp(player)
+	end
+	if careerOk then
+		require(script.Parent.CareerService).recordDeath(player, player.Character)
 	end
 	player:LoadCharacter()
 end)

@@ -18,6 +18,7 @@ local GameConfig = require(Medical.GameMode.Config)
 local Rules = require(Medical.GameMode.Rules)
 local MedicalService = require(script.Parent.Parent.MedicalService)
 local Remotes = require(Medical.Remotes)
+local CareerService = require(script.Parent.Parent.CareerService)
 
 local GameService = {}
 
@@ -450,6 +451,7 @@ function GameService.join(player: Player, side: any)
 	-- switching sides while down counts as giving up
 	if player.Character and GameService.sideOf(player) and MedicalService.isIncapacitated(player) then
 		chargeDeath(player, player.Character)
+		CareerService.recordDeath(player, player.Character)
 	end
 	player.Team = teams[side]
 	result(player, true)

@@ -222,6 +222,11 @@ dependencies and is tested under Lune.
   the menu and switch sides (switching while unconscious costs a ticket). The server enforces the gap; the menu
   just greys out a full side. Characters only spawn for players on a side (`Players.CharacterAutoLoads` is turned
   off) and respawn `RespawnSeconds` after dying.
+- **My Career:** the main menu's MY CAREER page shows total kills, deaths, K/D, most used class and time played.
+  Stats are saved in the `KATCareer_v1` DataStore (`src/server/CareerService.luau`). A kill goes to the last enemy
+  who shot the victim in the 5 minutes before they died or gave up; team kills don't count. Classes don't exist
+  yet, so "most used class" uses the Player attribute `Class` and defaults to Rifleman. To save stats in Studio,
+  enable Game Settings > Security > Enable Studio Access to API Services (the game must be published).
 - **Respawn while unconscious:** an unconscious player gets a Respawn button (click twice to confirm). It costs their
   side one death ticket. Turn it off with `Config.AllowGiveUp = false`.
 - **Tickets:** each side starts with `StartTickets` (250). Every death costs `DeathTickets` (1); being unconscious
