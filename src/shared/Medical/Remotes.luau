@@ -23,6 +23,8 @@ Remotes.Names = {
 	"GunFx", -- S->C (shooter, weaponId, origin, directions) shots by other players
 	"GunHit", -- S->C (kind) hit confirmation for the shooter
 	"Stance", -- C->S (crouch, sprint, lean) movement state
+	"Gear", -- C->S (action, ...) inventory requests
+	"GearState", -- S->C (gear snapshot, nearby source) inventory state
 	"LockerTake", -- C->S (slot BasePart) take / equip a weapon from a locker
 	"Respawn", -- C->S give up while unconscious and respawn
 	"JoinTeam", -- C->S (side "A"/"B") pick a side from the team select menu

@@ -378,7 +378,10 @@ function MedicalService.movementMultiplier(record: Record): number
 	if mult < 0.95 then
 		move = math.min(move, 1) -- no sprinting while injured
 	end
-	return mult * move * (record.model:GetAttribute("MedCarryMultiplier") or 1)
+	return mult
+		* move
+		* (record.model:GetAttribute("MedCarryMultiplier") or 1)
+		* (record.model:GetAttribute("GearSpeed") or 1)
 end
 
 -- Re-applies walk speed right away (sprint / crouch changes) instead of waiting for the next tick.

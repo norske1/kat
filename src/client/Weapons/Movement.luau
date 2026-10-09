@@ -10,6 +10,8 @@ local UserInputService = game:GetService("UserInputService")
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local WeaponConfig = require(Medical:WaitForChild("Weapons").Config)
 local Remotes = require(Medical.Remotes)
+local Gear = require(Medical:WaitForChild("Gear").Gear)
+local GearConfig = require(Medical.Gear.Config)
 local Animator = require(script.Parent.Parent.Animator)
 
 local Movement = {}
@@ -25,6 +27,8 @@ local shoulder = Vector3.zero
 local smoothShoulder = Vector3.zero
 local lean = 0 -- smoothed, after wall checks
 local lastSent = ""
+local stamina = 1
+local exhausted = false
 
 local function character(): Model?
 	return player.Character
@@ -66,12 +70,32 @@ local function wantsSprint(): boolean
 	if not hum or not root or hum.MoveDirection.Magnitude < 0.1 then
 		return false
 	end
+	if exhausted or (char :: Model):GetAttribute("GearNoSprint") then
+		return false
+	end
 	-- forwards (or forwards-diagonal) only
 	return hum.MoveDirection:Dot((root :: BasePart).CFrame.LookVector) > 0.3
 end
 
 -- Before the camera updates: sprint state and camera offset (shoulder + lean).
+local function updateStamina(dt: number)
+	local char = character()
+	local mass = char and char:GetAttribute("GearMass") or 0
+	if state.sprint then
+		stamina = math.max(0, stamina - dt / Gear.sprintSeconds(mass))
+		if stamina <= 0 then
+			exhausted = true
+		end
+	else
+		stamina = math.min(1, stamina + dt / GearConfig.StaminaRegenSeconds)
+		if exhausted and stamina >= GearConfig.StaminaResume then
+			exhausted = false
+		end
+	end
+end
+
 local function beforeCamera(dt: number)
+	updateStamina(dt)
 	if busy() then
 		if state.crouch or state.sprint or state.lean ~= 0 then
 			reset()
@@ -136,6 +160,11 @@ function Movement.isSprinting(): boolean
 	return state.sprint
 end
 
+-- 0..1, and whether the player ran out (can't sprint until it recovers).
+function Movement.stamina(): (number, boolean)
+	return stamina, exhausted
+end
+
 function Movement.isCrouched(): boolean
 	return state.crouch
 end
@@ -163,6 +192,7 @@ function Movement.init()
 	RunService:BindToRenderStep("KATMoveOffset", Enum.RenderPriority.Camera.Value - 1, beforeCamera)
 	RunService:BindToRenderStep("KATMoveRoll", Enum.RenderPriority.Camera.Value + 1, afterCamera)
 	player.CharacterAdded:Connect(function()
+		stamina, exhausted = 1, false
 		lean = 0
 		lastSent = ""
 		state.crouch, state.sprint, state.lean = false, false, 0

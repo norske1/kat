@@ -43,6 +43,11 @@ end)
 optional("game mode HUD", function()
 	require(script.Parent.GameModeHud).init(screen)
 end)
+local InventoryUi = optional("inventory", function()
+	local module = require(script.Parent.InventoryUi)
+	module.init(screen)
+	return module
+end)
 local GunClient = optional("weapons", function()
 	local module = require(script.Parent.Weapons.GunClient)
 	module.init(screen)
@@ -97,7 +102,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		Remotes.get("CancelAction"):FireServer()
 	elseif key == Config.DropCarryKey then
 		Remotes.get("DropCarry"):FireServer()
-	elseif key == Enum.KeyCode.I then
+	elseif key == Enum.KeyCode.I and not InventoryUi then
 		Hud.toggleBag()
 	elseif key == Config.DebugToggleKey then
 		Hud.toggleDebug()

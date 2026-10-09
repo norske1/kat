@@ -55,10 +55,16 @@ local function humanoid(): Humanoid?
 	return char and char:FindFirstChildOfClass("Humanoid")
 end
 
+local inventoryOk, InventoryUi = pcall(require, script.Parent.Parent.InventoryUi)
+local function inventoryOpen(): boolean
+	return inventoryOk and InventoryUi.isOpen()
+end
+
 local function mouseFree(): boolean
 	return not medical.conscious
 		or Menu.isOpen()
 		or Hud.wantsMouse()
+		or inventoryOpen()
 		or UserInputService:IsKeyDown(WeaponConfig.FreeMouseKey)
 end
 

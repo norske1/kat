@@ -1,14 +1,16 @@
 --!strict
--- Per-player medical item inventory.
+-- Per-player medical items. They live in the player's gear (Gear/GearService), so they take up room and
+-- weigh something; this module is the medical system's view of them.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Config = require(Medical.Config)
 local Items = require(Medical.Items)
+local Gear = require(Medical.Gear.Gear)
 local Remotes = require(Medical.Remotes)
+local GearService = require(script.Parent.Gear.GearService)
 
 local Inventory = {}
 
-local inventories: { [Player]: { [string]: number } } = {}
 local inventoryRemote = Remotes.get("Inventory")
 
 Inventory.levelOf = function(_player: Player): number
@@ -18,20 +20,25 @@ Inventory.debugAllowed = function(_player: Player): boolean
 	return false
 end
 
+-- Medical item counts across all containers.
 function Inventory.get(player: Player): { [string]: number }
-	local inv = inventories[player]
-	if not inv then
-		inv = {}
-		inventories[player] = inv
+	local state = GearService.get(player)
+	local out = {}
+	for _, c in Gear.CONTAINERS do
+		for id, n in state.items[c] do
+			if Items[id] then
+				out[id] = (out[id] or 0) + n
+			end
+		end
 	end
-	return inv
+	return out
 end
 
 function Inventory.has(player: Player, itemId: string): boolean
 	if Config.InfiniteSupplies then
 		return true
 	end
-	return (Inventory.get(player)[itemId] or 0) > 0
+	return Gear.count(GearService.get(player), itemId) > 0
 end
 
 function Inventory.take(player: Player, itemId: string): boolean
@@ -42,41 +49,46 @@ function Inventory.take(player: Player, itemId: string): boolean
 	if def and def.reusable then
 		return Inventory.has(player, itemId)
 	end
-	local inv = Inventory.get(player)
-	local n = inv[itemId] or 0
-	if n <= 0 then
-		return false
-	end
-	inv[itemId] = if n > 1 then n - 1 else nil :: any
-	Inventory.sync(player)
-	return true
+	return GearService.removeItem(player, itemId, 1) == 1
 end
 
-function Inventory.give(player: Player, itemId: string, count: number?)
+-- Adds items as far as they fit. Returns how many were added.
+function Inventory.give(player: Player, itemId: string, count: number?): number
 	if not Items[itemId] then
 		warn("[Medical] unknown item " .. itemId)
-		return
+		return 0
 	end
-	local inv = Inventory.get(player)
-	inv[itemId] = (inv[itemId] or 0) + (count or 1)
-	Inventory.sync(player)
+	return GearService.addItem(player, itemId, count or 1)
 end
 
--- Tops the inventory up to the loadout for the player's medical level.
+-- Tops the medical items up to the loadout for the player's medical level, as far as they fit.
 function Inventory.restock(player: Player, level: number)
 	local loadout = Config.Loadouts[level] or Config.Loadouts[0]
-	local inv = Inventory.get(player)
+	local state = GearService.get(player)
 	for itemId, count in loadout do
-		if (inv[itemId] or 0) < count then
-			inv[itemId] = count
+		local need = count - Gear.count(state, itemId)
+		if need > 0 then
+			Gear.add(state, itemId, need)
 		end
 	end
-	Inventory.sync(player)
+	GearService.changed(player)
 end
 
 function Inventory.clear(player: Player)
-	inventories[player] = {}
-	Inventory.sync(player)
+	local state = GearService.get(player)
+	for _, c in Gear.CONTAINERS do
+		for id in state.items[c] do
+			if Items[id] then
+				state.items[c][id] = nil
+			end
+		end
+	end
+	GearService.changed(player)
+end
+
+-- New character: class kit plus medical loadout (deferred so the Class attribute and Backpack are fresh).
+function Inventory.spawn(player: Player)
+	task.defer(GearService.spawn, player)
 end
 
 function Inventory.sync(player: Player)
@@ -91,8 +103,8 @@ function Inventory.sync(player: Player)
 	end
 end
 
-function Inventory.remove(player: Player)
-	inventories[player] = nil
-end
+function Inventory.remove(_player: Player) end
+
+GearService.onChanged(Inventory.sync)
 
 return Inventory

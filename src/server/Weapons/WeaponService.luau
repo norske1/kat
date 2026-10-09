@@ -22,6 +22,10 @@ local CareerService = require(script.Parent.Parent.CareerService)
 
 local WeaponService = {}
 
+-- Set by the gear system: ammo comes from the inventory, and lockers / racks go through it.
+WeaponService.ammo = nil :: { count: (Player, string) -> number, take: (Player, string, number) -> number }?
+WeaponService.hooks = {} :: { take: ((Player, string) -> boolean)?, refill: ((Player) -> ())? }
+
 type ToolState = {
 	def: any,
 	owner: Player,
@@ -42,9 +46,24 @@ local hitRemote = Remotes.get("GunHit")
 
 local GUN_ATTRIBUTES = { "GunHold", "GunWeapon", "GunAim", "GunPitch", "GunAction", "GunActionT", "GunActionDur" }
 
+local function reserveOf(st: ToolState): number
+	local provider = WeaponService.ammo
+	return if provider then provider.count(st.owner, st.def.id) else st.reserve
+end
+
+local function takeAmmo(st: ToolState, n: number): number
+	local provider = WeaponService.ammo
+	if provider then
+		return provider.take(st.owner, st.def.id, n)
+	end
+	local take = math.min(n, st.reserve)
+	st.reserve -= take
+	return take
+end
+
 local function sync(tool: Tool, st: ToolState)
 	tool:SetAttribute("Ammo", st.ammo)
-	tool:SetAttribute("Reserve", st.reserve)
+	tool:SetAttribute("Reserve", reserveOf(st))
 	tool:SetAttribute("Reloading", st.reloading)
 end
 
@@ -223,13 +242,7 @@ local function refillTool(tool: Tool)
 	end
 end
 
--- Gives a weapon (or refills it if the player already has one). Returns true if a new tool was given.
-function WeaponService.give(player: Player, weaponId: string): boolean
-	local existing = ownedTool(player, weaponId)
-	if existing then
-		refillTool(existing)
-		return false
-	end
+local function addTool(player: Player, weaponId: string): boolean
 	local backpack = player:FindFirstChildOfClass("Backpack") or player:WaitForChild("Backpack", 5)
 	local tool = WeaponService.createTool(player, weaponId)
 	if tool and backpack then
@@ -239,6 +252,42 @@ function WeaponService.give(player: Player, weaponId: string): boolean
 	return false
 end
 
+-- Gear system: makes the player's tools match their weapon slots and refreshes the ammo display.
+function WeaponService.syncTools(player: Player, wanted: { [string]: boolean })
+	local remove = {}
+	for tool, st in tools do
+		if st.owner == player and not wanted[st.def.id] then
+			table.insert(remove, tool)
+		end
+	end
+	for _, tool in remove do
+		tool:Destroy()
+	end
+	for weaponId in wanted do
+		if not ownedTool(player, weaponId) then
+			addTool(player, weaponId)
+		end
+	end
+	for tool, st in tools do
+		if st.owner == player then
+			sync(tool, st)
+		end
+	end
+end
+
+-- Gives a weapon (or refills it if the player already has one). Returns true if a new tool was given.
+function WeaponService.give(player: Player, weaponId: string): boolean
+	if WeaponService.hooks.take then
+		return WeaponService.hooks.take(player, weaponId)
+	end
+	local existing = ownedTool(player, weaponId)
+	if existing then
+		refillTool(existing)
+		return false
+	end
+	return addTool(player, weaponId)
+end
+
 function WeaponService.giveLoadout(player: Player)
 	for _, weaponId in WeaponConfig.Loadout do
 		WeaponService.give(player, weaponId)
@@ -246,6 +295,10 @@ function WeaponService.giveLoadout(player: Player)
 end
 
 function WeaponService.refill(player: Player)
+	if WeaponService.hooks.refill then
+		WeaponService.hooks.refill(player)
+		return
+	end
 	for tool, st in tools do
 		if st.owner == player then
 			refillTool(tool)
@@ -287,7 +340,7 @@ end
 -- Movement stance -----------------------------------------------------------------------------------
 local function updateMove(character: Model)
 	local mult = 1
-	if character:GetAttribute("MoveSprint") then
+	if character:GetAttribute("MoveSprint") and not character:GetAttribute("GearNoSprint") then
 		mult = WeaponConfig.SprintSpeed
 	elseif character:GetAttribute("MoveCrouch") then
 		mult = WeaponConfig.CrouchSpeed
@@ -447,13 +500,14 @@ local function onReload(player: Player, tool: any)
 		return
 	end
 	local def = st.def
-	if st.ammo >= def.magazine or st.reserve <= 0 then
+	local reserve = reserveOf(st)
+	if st.ammo >= def.magazine or reserve <= 0 then
 		return
 	end
 	local record = MedicalService.getByPlayer(player)
 	local armInjury = if record then Patient.armImpairment(record.state) else 0
 	local pain = if record then record.state.painPerceived or 0 else 0
-	local duration = WeaponConfig.reloadDuration(def, st.ammo, st.reserve, armInjury, pain)
+	local duration = WeaponConfig.reloadDuration(def, st.ammo, reserve, armInjury, pain)
 	local character = player.Character
 	local handle = tool:FindFirstChild("Handle")
 	st.reloading = true
@@ -465,14 +519,13 @@ local function onReload(player: Player, tool: any)
 	end
 
 	if def.reloadPerShell then
-		local shells = math.min(def.magazine - st.ammo, st.reserve)
+		local shells = math.min(def.magazine - st.ammo, reserve)
 		local interval = (duration - 0.3) / math.max(shells, 1)
 		setAction(character, "ReloadShells", duration)
 		for i = 1, shells do
 			task.delay(interval * i, function()
-				if valid() and st.reserve > 0 and st.ammo < def.magazine then
+				if valid() and st.ammo < def.magazine and takeAmmo(st, 1) > 0 then
 					st.ammo += 1
-					st.reserve -= 1
 					sync(tool, st)
 					Sounds.play("ShellInsert", handle)
 				end
@@ -504,9 +557,7 @@ local function onReload(player: Player, tool: any)
 		end)
 		task.delay(duration, function()
 			if valid() then
-				local take = math.min(def.magazine - st.ammo, st.reserve)
-				st.ammo += take
-				st.reserve -= take
+				st.ammo += takeAmmo(st, def.magazine - st.ammo)
 				st.reloading = false
 				sync(tool, st)
 			end

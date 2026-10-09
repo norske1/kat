@@ -151,6 +151,7 @@ end
 function Locker.build(base: CFrame, parent: Instance): Model
 	local locker = Instance.new("Model")
 	locker.Name = "WeaponLocker"
+	CollectionService:AddTag(locker, "Arsenal")
 	block(locker, "Back", Vector3.new(WIDTH, HEIGHT, 0.2), base * CFrame.new(0, HEIGHT / 2, DEPTH / 2 - 0.1))
 	block(locker, "Left", Vector3.new(0.2, HEIGHT, DEPTH), base * CFrame.new(-WIDTH / 2 + 0.1, HEIGHT / 2, 0))
 	block(locker, "Right", Vector3.new(0.2, HEIGHT, DEPTH), base * CFrame.new(WIDTH / 2 - 0.1, HEIGHT / 2, 0))

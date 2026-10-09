@@ -253,6 +253,17 @@ dependencies and is tested under Lune.
   progress and ATTACK / DEFEND / LOCKED for your side. A capture panel shows while you stand in a zone, and a
   banner shows the winner.
 
+## Inventory and weight (ArmA-style)
+
+Press **I** to open the inventory. The left side is whatever is next to you: the **arsenal** (weapon lockers, or any Part/Model tagged `Arsenal`) or **dropped gear** on the ground. The right side is your gear: PRIMARY / HANDGUN / LAUNCHER weapon slots, then UNIFORM, VEST and BACKPACK containers, each with its own load in kg.
+
+- Left click an item to take one (one magazine for ammo) into the selected container; right click takes five. In your containers, left click drops one, right click drops all, and the U / V / B buttons move one to another container. **X** on a slot takes it off.
+- Every item has a weight (`src/shared/Medical/Gear/Config.luau`). Above 25 kg you slow down (70% speed at 60 kg), above 50 kg you can't sprint, and heavier loads drain sprint stamina faster.
+- Ammo lives in the inventory: reloading uses it, and the weapon locker's ammo box tops you up to your class kit amount.
+- You spawn with your class kit (`GearConfig.Kits`). Medics get medical level 1, a chest rig and a Carryall full of medical gear; everyone gets a Radio and a Hammer for now.
+- The arsenal offers basic medical items to everyone and the full medical list to medics. Dropped gear disappears after 5 minutes.
+- Backpacks and vests don't have character models yet.
+
 ## Roblox content and maturity
 
 - Medications use fictional game names (Analgesic, Adrenaline, Clotting Agent, Reversal Spray...), not real drug or brand names. Equipment brand names were replaced with generic ones (Hemostatic Gauze, Airway Tube, Suction Pump, Clot Tester).

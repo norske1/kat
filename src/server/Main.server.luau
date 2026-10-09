@@ -16,6 +16,17 @@ local ActionRunner = require(script.Parent.ActionRunner)
 local Carry = require(script.Parent.Carry)
 local Dummies = require(script.Parent.Dummies)
 local MedicalAPI = require(script.Parent.MedicalAPI)
+local GearService = require(script.Parent.Gear.GearService)
+
+GearService.levelOf = MedicalService.medicLevel
+GearService.canUse = function(player: Player): boolean
+	return not MedicalService.isIncapacitated(player) and not ActionRunner.isBusy(player)
+end
+GearService.onChanged(function(player)
+	if player.Character then
+		MedicalService.refreshMovement(player.Character)
+	end
+end)
 
 local lastRequest: { [Player]: number } = {}
 local function throttled(player: Player): boolean
@@ -30,8 +41,7 @@ end
 -- Players ------------------------------------------------------------------
 local function onCharacter(player: Player, character: Model)
 	MedicalService.register(character, player)
-	Inventory.clear(player)
-	Inventory.restock(player, MedicalService.medicLevel(player))
+	Inventory.spawn(player)
 end
 
 Players.PlayerAdded:Connect(function(player)
@@ -202,6 +212,14 @@ end)
 if not weaponsOk then
 	warn("[KATMedical] weapon system failed to start: " .. tostring(weaponsErr))
 end
+-- Inventory: works without guns too (then ammo just isn't used).
+local gearOk, gearErr = pcall(function()
+	GearService.init(if weaponsOk then require(script.Parent.Weapons.WeaponService) else nil)
+end)
+if not gearOk then
+	warn("[KATMedical] inventory failed to start: " .. tostring(gearErr))
+end
+
 -- Give up while unconscious: respawn (the game mode charges a death ticket).
 Remotes.get("Respawn").OnServerEvent:Connect(function(player)
 	if not Config.AllowGiveUp or throttled(player) then
