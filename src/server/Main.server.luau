@@ -242,14 +242,34 @@ if not pingOk then
 	warn("[KATMedical] pings failed to start: " .. tostring(pingErr))
 end
 
+local roundResets: { () -> () } = {}
 local vehiclesOk, vehiclesErr = pcall(function()
 	local VehicleService = require(script.Parent.Vehicles.VehicleService)
 	VehicleService.init()
-	require(script.Parent.GameMode.GameService).onNewRound = VehicleService.reset
+	table.insert(roundResets, VehicleService.reset)
 end)
 if not vehiclesOk then
 	warn("[KATMedical] vehicles failed to start: " .. tostring(vehiclesErr))
 end
+local logisticsOk, logisticsErr = pcall(function()
+	local LogisticsService = require(script.Parent.Logistics.LogisticsService)
+	LogisticsService.init()
+	require(script.Parent.Vehicles.VehicleService).onSpawned = LogisticsService.onVehicle
+	table.insert(roundResets, LogisticsService.reset)
+end)
+if not logisticsOk then
+	warn("[KATMedical] logistics failed to start: " .. tostring(logisticsErr))
+end
+pcall(function()
+	require(script.Parent.GameMode.GameService).onNewRound = function()
+		for _, reset in roundResets do
+			local ok, err = pcall(reset)
+			if not ok then
+				warn("[KATMedical] round reset failed: " .. tostring(err))
+			end
+		end
+	end
+end)
 
 -- Give up while unconscious: respawn (the game mode charges a death ticket).
 Remotes.get("Respawn").OnServerEvent:Connect(function(player)

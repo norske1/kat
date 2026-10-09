@@ -227,6 +227,21 @@ local function draw(p, lines, x0: number, z0: number, span: number, px: number, 
 			end
 		end
 	end
+	-- FOBs and HABs
+	local mySide = player.Team and player.Team:GetAttribute("Side")
+	for _, tag in { "FOB", "HAB" } do
+		for _, part in CollectionService:GetTagged(tag) do
+			if part:IsA("BasePart") and part:GetAttribute("Side") == mySide then
+				local x, y, inside = at(part.Position)
+				if inside then
+					local chosen = tag == "HAB" and player:GetAttribute("SpawnAt") == part:GetAttribute("HabId")
+					local bg = if tag == "HAB" then Color3.fromRGB(40, 90, 140) else Color3.fromRGB(60, 110, 60)
+					local m = label(p, x, y, tag .. (if chosen then " *" else ""), Color3.new(1, 1, 1), 11, bg)
+					m.Size = UDim2.fromOffset(if chosen then 44 else 34, 16)
+				end
+			end
+		end
+	end
 	-- pings
 	for _, ping in pings do
 		local x, y, inside = at(ping.pos)
@@ -414,7 +429,7 @@ function MapHud.init(screen: ScreenGui)
 	bigLines = pool(bigCanvas, "Frame")
 	bigPool = pool(bigCanvas, "TextLabel")
 	Ui.label({
-		Text = "MAP  -  left click: ping   right click: clear your pings   M: close",
+		Text = "MAP  -  left click: ping (click a HAB to spawn there)   right click: clear your pings   M: close",
 		Font = T.FontBold,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -430,6 +445,20 @@ function MapHud.init(screen: ScreenGui)
 	end
 	bigCanvas.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			local rel = Vector2.new(input.Position.X, input.Position.Y) - bigCanvas.AbsolutePosition
+			local k = (bounds.maxX - bounds.minX) / bigCanvas.AbsoluteSize.X
+			local wx, wz = bounds.minX + rel.X * k, bounds.minZ + rel.Y * k
+			local mySide = player.Team and player.Team:GetAttribute("Side")
+			for _, hab in CollectionService:GetTagged("HAB") do
+				if hab:IsA("BasePart") and hab:GetAttribute("Side") == mySide then
+					if Vector2.new(hab.Position.X - wx, hab.Position.Z - wz).Magnitude <= 16 * k then
+						local id = hab:GetAttribute("HabId")
+						Remotes.get("Build")
+							:FireServer("spawnAt", if player:GetAttribute("SpawnAt") == id then nil else id)
+						return
+					end
+				end
+			end
 			pingRemote:FireServer("enemy", worldFromClick(input))
 		elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
 			pingRemote:FireServer("clear")

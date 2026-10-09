@@ -18,6 +18,7 @@ local MedicalService = require(script.Parent.Parent.MedicalService)
 local WeaponService = require(script.Parent.Parent.Weapons.WeaponService)
 
 local VehicleService = {}
+VehicleService.onSpawned = nil :: ((Model, any) -> ())?
 
 type Record = {
 	id: number,
@@ -486,6 +487,9 @@ local function spawnVehicle(player: Player, pad: BasePart, typeId: string)
 				onDriver(rec)
 			end
 		end)
+	end
+	if VehicleService.onSpawned then
+		VehicleService.onSpawned(rec.model, def)
 	end
 	MedicalService.notify(player, def.name .. " deployed", "result")
 end

@@ -762,6 +762,40 @@ test("vehicles: caps and cooldowns", function()
 	expect(not Pool.claim(pool, "Helicopter", 12, 1000, 480), "heli cap 2")
 end)
 
+test("logistics: placement rules and supplies", function()
+	local Logistics = Harness.require("Logistics/Logistics")
+	local cfg = { PlaceRange = 40, FobMinFromMain = 300, FobSpacing = 250 }
+	local function ctx(over)
+		local c = {
+			class = "Squad Commander",
+			distance = 10,
+			fob = { stock = 500, habs = 0 },
+			mainDistance = 1000,
+			fobDistance = 1000,
+			blocked = false,
+		}
+		for k, v in over or {} do
+			c[k] = v
+		end
+		return c
+	end
+	local hab = { cost = 300 }
+	expect(Logistics.canPlace("HAB", hab, ctx(), cfg), "leader in FOB with supplies")
+	expect(not Logistics.canPlace("HAB", hab, ctx({ class = "Rifleman" }), cfg), "riflemen can't place")
+	expect(Logistics.canPlace("HAB", hab, ctx({ class = "Commander" }), cfg), "commander can place")
+	expect(not Logistics.canPlace("HAB", hab, ctx({ fob = { stock = 100, habs = 0 } }), cfg), "needs supplies")
+	expect(not Logistics.canPlace("HAB", hab, ctx({ fob = { stock = 900, habs = 1 } }), cfg), "one HAB per FOB")
+	local noFob = ctx()
+	noFob.fob = nil
+	expect(not Logistics.canPlace("Sandbags", { cost = 20 }, noFob, cfg), "needs a FOB")
+	expect(Logistics.canPlace("FOB", { cost = 0 }, noFob, cfg), "FOB radio needs no FOB")
+	expect(not Logistics.canPlace("FOB", { cost = 0 }, ctx({ mainDistance = 100 }), cfg), "not near main")
+	expect(not Logistics.canPlace("FOB", { cost = 0 }, ctx({ fobDistance = 100 }), cfg), "FOB spacing")
+	expect(not Logistics.canPlace("Sandbags", { cost = 20 }, ctx({ blocked = true }), cfg), "blocked")
+	expect(Logistics.transfer(math.huge, 200, 1000) == 800, "load a truck to capacity")
+	expect(Logistics.transfer(1000, 2500, 3000) == 500, "FOB stock cap")
+end)
+
 print(("\n%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	local process = require("@lune/process")

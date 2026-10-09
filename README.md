@@ -307,6 +307,17 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up
 - **Your own map:** tag a Part `VehiclePad` and give it a string attribute `Side` (`A` or `B`).
 - Settings: `src/shared/Medical/Vehicles/Config.luau`. Models are placeholder parts for now and driving is arcade-style.
 
+## Logistics and base building
+
+- **Supplies:** drive a **Logistics Truck** (holds 1000) and hold **G** next to it. At your main base this loads it full. Inside a friendly FOB's radius it unloads into the FOB (max 3000).
+- **Placing (Squad Commanders and the Commander only):** press **B** for the build menu, pick a structure, then move the green ghost with the mouse. **R** rotates, left click places, right click cancels.
+  - A **FOB Radio** is free, but must be 300 studs from a main base and 250 from another FOB.
+  - Everything else must be inside a friendly FOB's 150-stud radius and is paid from that FOB's supplies when placed: HAB 300 (one per FOB), Ammo Crate 150, Bunker 250, HESCO 60, Sandbags 20, Razor Wire 15.
+- **Building (everyone):** placed structures are see-through blueprints. Hold **F** on one with a **Hammer** in your inventory; each hit adds one build point until it's solid.
+- **Structures:** a finished Ammo Crate works like an arsenal (press I next to it). A finished **HAB** shows on the map: click it on the fullscreen map (M) to respawn there. You spawn at main instead if an enemy is within 40 studs of it.
+- **Removing:** leaders can hold **G** to remove their side's structures (supplies are refunded). Enemies can hold **G** for 6 seconds on a FOB radio to dismantle the whole FOB.
+- Everything is cleared when a new round starts. Settings: `src/shared/Medical/Logistics/Config.luau`. Models are placeholder blocks.
+
 ## Roblox content and maturity
 
 - Medications use fictional game names (Analgesic, Adrenaline, Clotting Agent, Reversal Spray...), not real drug or brand names. Equipment brand names were replaced with generic ones (Hemostatic Gauze, Airway Tube, Suction Pump, Clot Tester).
