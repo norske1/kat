@@ -288,7 +288,7 @@ Remotes.get("Respawn").OnServerEvent:Connect(function(player)
 	if careerOk then
 		require(script.Parent.CareerService).recordDeath(player, player.Character)
 	end
-	player:LoadCharacter()
+	require(script.Parent.CharacterLook).load(player)
 end)
 
 print("[KATMedical] server started" .. (if weaponsOk then "" else " (weapons disabled)"))
