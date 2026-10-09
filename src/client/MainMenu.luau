@@ -233,14 +233,6 @@ local function build()
 		Size = UDim2.new(1, 0, 0, 60),
 		Parent = mainPage,
 	})
-	centered({
-		Text = GameConfig.MenuSubtitle,
-		TextSize = 18,
-		TextColor3 = T.TextDim,
-		Size = UDim2.new(1, 0, 0, 24),
-		Position = UDim2.fromOffset(0, 62),
-		Parent = mainPage,
-	})
 	local join = Ui.button({
 		Text = "JOIN ROUND",
 		Font = T.FontBold,

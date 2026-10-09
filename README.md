@@ -1,6 +1,7 @@
-# KAT-style Medical System for Roblox
+# Hellbound
 
-An advanced, server-authoritative medical system for Roblox, inspired by
+A Roblox game with Squad-based gameplay and some ArmA mechanics: two teams, tickets, ordered objective capture
+and first-person gunplay, with an advanced, server-authoritative medical system inspired by
 [KAT - Advanced Medical](https://steamcommunity.com/workshop/filedetails/?id=2020940806) for ArmA 3.
 It is written from scratch in Luau. The mechanics follow the KAT/ACE design, but no SQF code was ported.
 

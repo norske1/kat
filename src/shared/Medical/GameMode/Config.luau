@@ -17,8 +17,7 @@ GameConfig.CountIncapacitated = false -- unconscious players don't hold or captu
 GameConfig.TickRate = 0.25 -- seconds between capture updates
 
 -- Lobby and team select: players join on the Lobby team (no character) and pick a side from the main menu.
-GameConfig.MenuTitle = "KAT MEDICAL"
-GameConfig.MenuSubtitle = "Squad-style combat medicine"
+GameConfig.MenuTitle = "Hellbound"
 GameConfig.MenuKey = Enum.KeyCode.M -- reopens the main menu to switch teams
 GameConfig.Lobby = { name = "Lobby", color = Color3.fromRGB(150, 150, 155) }
 GameConfig.MaxTeamGap = 3 -- a side can't be joined if that would put it more than this many players ahead
