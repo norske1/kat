@@ -40,6 +40,10 @@ GameConfig.Classes = {
 	{ name = "Machine Gunner", cap = 1, description = "Squad support gunner" },
 } :: { ClassDef }
 
+-- Chat: local messages reach players within LocalRange studs; the Team / Squad / Command radio channels
+-- need a Radio in the inventory of both the sender and the listener.
+GameConfig.Chat = { LocalRange = 40, UnconsciousCanTalk = false }
+
 GameConfig.Sides = {
 	A = { name = "Side A", color = Color3.fromRGB(60, 130, 230) },
 	B = { name = "Side B", color = Color3.fromRGB(215, 60, 55) },

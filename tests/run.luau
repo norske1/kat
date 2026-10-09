@@ -672,6 +672,41 @@ test("gear: weights, containers and kits", function()
 	end
 end)
 
+test("chat: local range and radio channels", function()
+	local Comms = Harness.require("GameMode/Comms")
+	local cfg = { LocalRange = 40, UnconsciousCanTalk = false }
+	local function p(uid, side, squad, class, radio, x, conscious)
+		return {
+			uid = uid,
+			side = side,
+			squad = squad,
+			class = class,
+			radio = radio,
+			conscious = conscious ~= false,
+			pos = if x then { X = x, Y = 0, Z = 0 } else nil,
+		}
+	end
+	local a = p(1, "A", 1, "Rifleman", true, 0)
+	local near = p(2, "B", 0, "Rifleman", false, 30)
+	local far = p(3, "A", 1, "Rifleman", true, 500)
+	local farOther = p(4, "A", 2, "Squad Commander", true, 500)
+	local lead = p(5, "A", 1, "Squad Commander", true, 900)
+	local cmdr = p(6, "A", 0, "Commander", true, 900)
+	local noRadio = p(7, "A", 1, "Rifleman", false, 900)
+	expect(Comms.canHear("local", a, near, cfg) and not Comms.canHear("local", a, far, cfg), "local range")
+	expect(Comms.canHear("local", p(8, nil, 0, "Rifleman", false), p(9, nil, 0, "Rifleman", false), cfg), "lobby")
+	expect(Comms.canHear("team", a, farOther, cfg) and not Comms.canHear("team", a, near, cfg), "team radio")
+	expect(not Comms.canHear("team", a, noRadio, cfg), "listener needs a radio")
+	expect(not Comms.canHear("team", noRadio, a, cfg) and Comms.blocked("team", noRadio, cfg) ~= nil, "sender radio")
+	expect(Comms.canHear("squad", a, far, cfg) and not Comms.canHear("squad", a, farOther, cfg), "squad radio")
+	expect(Comms.blocked("command", a, cfg) ~= nil, "riflemen can't use command")
+	expect(Comms.canHear("command", lead, cmdr, cfg) and Comms.canHear("command", cmdr, farOther, cfg), "command")
+	expect(not Comms.canHear("command", lead, far, cfg), "command is leaders only")
+	local down = p(10, "A", 1, "Rifleman", true, 0, false)
+	expect(not Comms.canHear("local", down, near, cfg) and not Comms.canHear("squad", a, down, cfg), "unconscious")
+	expect(Comms.canHear("squad", down, down, cfg), "always see your own message")
+end)
+
 print(("\n%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	local process = require("@lune/process")

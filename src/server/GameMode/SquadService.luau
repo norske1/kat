@@ -29,6 +29,8 @@ local function refresh()
 		if not kicked[player.UserId] then
 			player:SetAttribute("Class", Squads.classOf(state, player.UserId))
 		end
+		local squad = Squads.squadOf(state, player.UserId)
+		player:SetAttribute("SquadId", if squad then squad.id else 0)
 	end
 	Remotes.get("SquadState"):FireAllClients(Squads.serialize(state))
 end

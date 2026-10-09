@@ -253,6 +253,10 @@ function GearService.changed(player: Player, openUi: boolean?)
 	end
 end
 
+function GearService.count(player: Player, id: string): number
+	return Gear.count(GearService.get(player), id)
+end
+
 function GearService.addItem(player: Player, id: string, n: number): number
 	local added = Gear.add(GearService.get(player), id, n)
 	GearService.changed(player)

@@ -220,6 +220,21 @@ if not gearOk then
 	warn("[KATMedical] inventory failed to start: " .. tostring(gearErr))
 end
 
+local radioOk, radioErr = pcall(function()
+	require(script.Parent.GameMode.RadioService).init({
+		hasRadio = function(player: Player): boolean
+			return GearService.count(player, "Radio") > 0
+		end,
+		isDown = MedicalService.isIncapacitated,
+		notify = function(player: Player, text: string)
+			MedicalService.notify(player, text, "error")
+		end,
+	})
+end)
+if not radioOk then
+	warn("[KATMedical] radio / chat failed to start: " .. tostring(radioErr))
+end
+
 -- Give up while unconscious: respawn (the game mode charges a death ticket).
 Remotes.get("Respawn").OnServerEvent:Connect(function(player)
 	if not Config.AllowGiveUp or throttled(player) then

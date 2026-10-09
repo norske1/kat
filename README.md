@@ -264,6 +264,16 @@ Press **I** to open the inventory. The left side is whatever is next to you: the
 - The arsenal offers basic medical items to everyone and the full medical list to medics. Dropped gear disappears after 5 minutes.
 - Backpacks and vests don't have character models yet.
 
+## Chat and radio
+
+Chat uses Roblox's TextChatService (so Roblox's text filter still applies), with channel tabs at the top of the chat window:
+
+- **Local** (the normal chat tab): only players within 40 studs see it. Players in the lobby only see each other.
+- **Team**: your whole side. **Squad**: your squad only. **Command**: Squad Commanders and the Commander only.
+- The Team, Squad and Command channels need a **Radio** in your inventory, and so does whoever is listening. Without one you get a "You need a Radio" warning and nobody hears you.
+- Unconscious players can't talk or hear the radio. Whispers only reach players in local range.
+- Range and settings: `GameConfig.Chat` in `src/shared/Medical/GameMode/Config.luau`. Needs Game Settings / TextChatService `ChatVersion = TextChatService` (the default for new places).
+
 ## Roblox content and maturity
 
 - Medications use fictional game names (Analgesic, Adrenaline, Clotting Agent, Reversal Spray...), not real drug or brand names. Equipment brand names were replaced with generic ones (Hemostatic Gauze, Airway Tube, Suction Pump, Clot Tester).
