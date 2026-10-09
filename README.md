@@ -286,6 +286,27 @@ Chat uses Roblox's TextChatService (so Roblox's text filter still applies), with
   - Pings last 45 seconds. Each player has a limit (Commander 5, Squad Commander 3, others 2), and the oldest is replaced.
 - Settings: `GameConfig.Map` in `src/shared/Medical/GameMode/Config.luau`.
 
+## Vehicles
+
+Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up to a post and hold **F** to deploy. The post shows how many are out and when the next one is ready.
+
+| Vehicle | Max per side | Cooldown | Seats | Gun |
+| --- | --- | --- | --- | --- |
+| MRAP | 5 | 3 min | driver, gunner, 4 | heavy MG |
+| Logistics Truck | 4 | 2 min | driver, 1 | none, carries 1000 supplies |
+| APC | 3 | 5 min | driver, gunner, 8 | heavy MG |
+| IFV | 2 | 6 min | driver, gunner, 6 | autocannon |
+| Helicopter | 2 | 8 min | pilot, 6 | none |
+
+- **Cooldowns:** every vehicle starts its own timer when it's deployed. A new one can only spawn while fewer than the max are alive and a timer has run out.
+- **Seats:** press **F** near a vehicle to get in or switch seats, and **Space** to get out. Only your own side can get in.
+- **Driving:** WASD. Helicopters use W/S for speed, A/D to turn and E/Q to climb or descend.
+- **Gunner seat:** aim with the mouse, left click fires. The server checks the seat, fire rate and aim.
+- **Despawning:** a vehicle left empty for 2 minutes despawns.
+- **Damage:** rifles barely scratch armour (APC/IFV take 3-4%, the MRAP 20%), mounted guns do full damage. A destroyed vehicle explodes, hurts everyone inside, and leaves a wreck for 30 seconds.
+- **Your own map:** tag a Part `VehiclePad` and give it a string attribute `Side` (`A` or `B`).
+- Settings: `src/shared/Medical/Vehicles/Config.luau`. Models are placeholder parts for now and driving is arcade-style.
+
 ## Roblox content and maturity
 
 - Medications use fictional game names (Analgesic, Adrenaline, Clotting Agent, Reversal Spray...), not real drug or brand names. Equipment brand names were replaced with generic ones (Hemostatic Gauze, Airway Tube, Suction Pump, Clot Tester).

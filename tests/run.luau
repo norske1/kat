@@ -742,6 +742,26 @@ test("pings: who sees them and limits", function()
 	expect(Pings.prune(list, 200) and #list == 0, "expired pings removed")
 end)
 
+test("vehicles: caps and cooldowns", function()
+	local Pool = Harness.require("Vehicles/Pool")
+	local pool = Pool.new({ MRAP = { cap = 5 }, Helicopter = { cap = 2 } })
+	for i = 1, 5 do
+		expect(Pool.claim(pool, "MRAP", i, 0, 180), "MRAP " .. i)
+	end
+	local ok, why = Pool.claim(pool, "MRAP", 6, 500, 180)
+	expect(not ok and why == "All 5 are deployed", "all 5 alive blocks spawning: " .. tostring(why))
+	Pool.release(pool, "MRAP", 2)
+	expect(Pool.claim(pool, "MRAP", 7, 200, 180), "slot ready again after its cooldown")
+	Pool.release(pool, "MRAP", 7)
+	ok, why = Pool.claim(pool, "MRAP", 8, 260, 180)
+	expect(not ok and why == "Next one ready in 2:00", "cooldown runs from the last spawn: " .. tostring(why))
+	local alive, ready, wait = Pool.status(pool, "MRAP", 260)
+	expect(alive == 4 and ready == 0 and wait == 120, "status")
+	expect(Pool.claim(pool, "MRAP", 9, 380, 180), "ready at 380")
+	expect(Pool.claim(pool, "Helicopter", 10, 0, 480) and Pool.claim(pool, "Helicopter", 11, 0, 480), "2 helis")
+	expect(not Pool.claim(pool, "Helicopter", 12, 1000, 480), "heli cap 2")
+end)
+
 print(("\n%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	local process = require("@lune/process")

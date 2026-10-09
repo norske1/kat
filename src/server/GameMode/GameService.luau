@@ -22,6 +22,7 @@ local CareerService = require(script.Parent.Parent.CareerService)
 local SquadService = require(script.Parent.SquadService)
 
 local GameService = {}
+GameService.onNewRound = nil :: (() -> ())?
 
 local state: Rules.State = Rules.new(0, GameConfig.StartTickets)
 local zones: { BasePart } = {}
@@ -169,6 +170,16 @@ local function buildBase(folder: Instance, key: string, floor: Vector3, facing: 
 		Parent = model,
 	})
 	CollectionService:AddTag(crate, "MedicalSupply")
+	local vehiclePad = part({
+		Name = "VehiclePad",
+		Size = Vector3.new(26, 0.2, 30),
+		CFrame = base * CFrame.new(48, 0.1, 0),
+		Color = Color3.fromRGB(70, 72, 76),
+		Material = Enum.Material.Concrete,
+		Parent = model,
+	})
+	vehiclePad:SetAttribute("Side", key)
+	CollectionService:AddTag(vehiclePad, "VehiclePad")
 end
 
 local function buildMap()
@@ -303,6 +314,9 @@ end
 local function newRound()
 	state = Rules.new(#zones, GameConfig.StartTickets)
 	roundOver = false
+	if GameService.onNewRound then
+		task.spawn(GameService.onNewRound)
+	end
 	workspace:SetAttribute("GameResetAt", 0)
 	publish()
 end

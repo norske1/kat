@@ -25,6 +25,7 @@ Remotes.Names = {
 	"Stance", -- C->S (crouch, sprint, lean) movement state
 	"Ping", -- C->S ("enemy", Vector3) | ("clear") place / clear your pings
 	"PingState", -- S->C (pings) the pings this player can see
+	"Vehicle", -- C->S ("aim" | "fire", vehicle, direction) mounted gun
 	"Gear", -- C->S (action, ...) inventory requests
 	"GearState", -- S->C (gear snapshot, nearby source) inventory state
 	"LockerTake", -- C->S (slot BasePart) take / equip a weapon from a locker

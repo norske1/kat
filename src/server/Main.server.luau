@@ -242,6 +242,15 @@ if not pingOk then
 	warn("[KATMedical] pings failed to start: " .. tostring(pingErr))
 end
 
+local vehiclesOk, vehiclesErr = pcall(function()
+	local VehicleService = require(script.Parent.Vehicles.VehicleService)
+	VehicleService.init()
+	require(script.Parent.GameMode.GameService).onNewRound = VehicleService.reset
+end)
+if not vehiclesOk then
+	warn("[KATMedical] vehicles failed to start: " .. tostring(vehiclesErr))
+end
+
 -- Give up while unconscious: respawn (the game mode charges a death ticket).
 Remotes.get("Respawn").OnServerEvent:Connect(function(player)
 	if not Config.AllowGiveUp or throttled(player) then

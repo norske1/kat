@@ -24,7 +24,11 @@ local WeaponService = {}
 
 -- Set by the gear system: ammo comes from the inventory, and lockers / racks go through it.
 WeaponService.ammo = nil :: { count: (Player, string) -> number, take: (Player, string, number) -> number }?
-WeaponService.hooks = {} :: { take: ((Player, string) -> boolean)?, refill: ((Player) -> ())? }
+WeaponService.hooks = {} :: {
+	take: ((Player, string) -> boolean)?,
+	refill: ((Player) -> ())?,
+	vehicleHit: ((Player, Instance, number) -> boolean)?,
+}
 
 type ToolState = {
 	def: any,
@@ -147,6 +151,9 @@ local function applyHit(shooter: Player, model: Model, part: Instance, damage: n
 		end
 	end
 end
+
+WeaponService.applyHit = applyHit
+WeaponService.characterFromPart = characterFromPart
 
 function WeaponService.canUse(player: Player): boolean
 	return not MedicalService.isIncapacitated(player)
@@ -426,6 +433,8 @@ local function stepBullets(dt: number)
 				if b.player.Parent then
 					hitRemote:FireClient(b.player, 2)
 				end
+			elseif not model and WeaponService.hooks.vehicleHit then
+				WeaponService.hooks.vehicleHit(b.player, hit.Instance, WeaponConfig.damageAt(b.def, b.bullet.traveled))
 			end
 		end
 		if done or b.bullet.age > 4 then
