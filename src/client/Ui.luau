@@ -112,14 +112,27 @@ end
 
 function Ui.isModalOpen(): boolean
 	for frame in modals do
-		if frame.Visible and frame:IsDescendantOf(game) then
-			local screen = frame:FindFirstAncestorWhichIsA("ScreenGui")
-			if not screen or screen.Enabled then
-				return true
-			end
+		if Ui.isVisible(frame) then
+			return true
 		end
 	end
 	return false
+end
+
+function Ui.isVisible(object: Instance): boolean
+	if not object:IsDescendantOf(game) then
+		return false
+	end
+	local node: Instance? = object
+	while node do
+		if node:IsA("GuiObject") and not (node :: GuiObject).Visible then
+			return false
+		elseif node:IsA("LayerCollector") and not (node :: LayerCollector).Enabled then
+			return false
+		end
+		node = node.Parent
+	end
+	return true
 end
 
 function Ui.padding(px: number): UIPadding

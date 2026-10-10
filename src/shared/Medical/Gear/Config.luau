@@ -30,6 +30,7 @@ export type GearDef = {
 	weaponId: string?,
 	roundsPer: number?,
 	arsenal: boolean?, -- offered by the arsenal (medical items are always offered)
+	equipable: boolean?,
 }
 
 GearConfig.Items = {
@@ -70,8 +71,8 @@ GearConfig.Items = {
 	},
 	Carryall = { name = "Carryall", kind = "container", slot = "backpack", capacity = 36, mass = 3.5, arsenal = true },
 	-- Equipment
-	Radio = { name = "Radio", kind = "item", mass = 0.8, arsenal = true },
-	Hammer = { name = "Hammer", kind = "item", mass = 1, arsenal = true },
+	Radio = { name = "Radio", kind = "item", mass = 0.8, arsenal = true, equipable = true },
+	Hammer = { name = "Hammer", kind = "item", mass = 1, arsenal = true, equipable = true },
 } :: { [string]: GearDef }
 
 -- Ammo item used by each weapon.

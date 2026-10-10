@@ -166,8 +166,8 @@ local function hammerHit(player: Player, s)
 	if s.done or s.removed or sideOf(player) ~= s.side or MedicalService.isIncapacitated(player) then
 		return
 	end
-	if GearService.count(player, "Hammer") <= 0 then
-		notify(player, "You need a Hammer in your inventory to build")
+	if not GearService.isEquipped(player, "Hammer") then
+		notify(player, "Equip your Hammer to build")
 		return
 	end
 	s.points += 1

@@ -93,6 +93,11 @@ local function bearingOf(look: Vector3): number
 	return (math.deg(math.atan2(look.X, -look.Z)) + 360) % 360
 end
 
+function MapHud.playerBearing(): number
+	local root = rootOf(player)
+	return if root then bearingOf(root.CFrame.LookVector) else 0
+end
+
 function MapHud.gridRef(pos: Vector3): string
 	local col = math.floor((pos.X - bounds.minX) / cfg.Grid)
 	local row = math.floor((pos.Z - bounds.minZ) / cfg.Grid) + 1
@@ -255,7 +260,7 @@ local function draw(p, lines, x0: number, z0: number, span: number, px: number, 
 	if root then
 		local x, y = at(root.Position)
 		local m = label(p, x, y, "▲", Color3.new(1, 1, 0.3), if full then 18 else 14)
-		m.Rotation = bearingOf(workspace.CurrentCamera.CFrame.LookVector)
+		m.Rotation = MapHud.playerBearing()
 	end
 	finish(p)
 	finish(lines)

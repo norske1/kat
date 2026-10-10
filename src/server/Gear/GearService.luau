@@ -12,6 +12,7 @@ local Items = require(Medical.Items)
 local GearConfig = require(Medical.Gear.Config)
 local Gear = require(Medical.Gear.Gear)
 local Remotes = require(Medical.Remotes)
+local GearTools = require(script.Parent.GearTools)
 
 local GearService = {}
 
@@ -139,9 +140,9 @@ end
 local function sourceInfo(player: Player)
 	local kind, inst = nearestSource(player)
 	if kind == "arsenal" then
-		return { kind = "arsenal", items = arsenalFor(player) }
+		return { kind = "arsenal", items = arsenalFor(player), instance = inst }
 	elseif kind == "ground" then
-		return { kind = "ground", items = table.clone(piles[inst :: BasePart]) }
+		return { kind = "ground", items = table.clone(piles[inst :: BasePart]), instance = inst }
 	end
 	return { kind = "ground", items = {} }
 end
@@ -245,6 +246,7 @@ function GearService.changed(player: Player, openUi: boolean?)
 		end
 		weapons.syncTools(player, wanted)
 	end
+	GearTools.sync(player, s)
 	if stateRemote and player.Parent then
 		stateRemote:FireClient(player, Gear.snapshot(s), sourceInfo(player), openUi == true)
 	end
@@ -361,8 +363,18 @@ end
 local actions = {}
 
 function actions.open() end
+function actions.equip(player, _s, _kind, _inst, id)
+	GearTools.equip(player, id)
+end
 
-function actions.take(player, s, kind, inst, id, n, to)
+function GearService.isEquipped(player: Player, id: string): boolean
+	return GearTools.held(player, id)
+end
+
+function actions.take(player, s, kind, inst, id, n, to, expectedSource)
+	if expectedSource ~= nil and expectedSource ~= inst then
+		return
+	end
 	local def = Gear.def(id)
 	if not def then
 		return
@@ -398,6 +410,19 @@ function actions.drop(player, s, kind, inst, id, n, from)
 	local removed = Gear.remove(s, id, count(n), c)
 	if removed > 0 then
 		toSource(player, kind, inst, { [id] = removed })
+	end
+end
+
+function actions.takeEquip(player, s, kind, inst, id, _n, to, expectedSource)
+	local def = Gear.def(id)
+	if not def or not def.equipable then
+		return
+	end
+	local before = Gear.count(s, id)
+	actions.take(player, s, kind, inst, id, 1, to, expectedSource)
+	if Gear.count(s, id) > before then
+		GearTools.sync(player, s)
+		GearTools.equip(player, id)
 	end
 end
 
@@ -490,6 +515,12 @@ local function ammoProvider()
 end
 
 function GearService.init(weaponService)
+	GearTools.init({
+		get = GearService.get,
+		canUse = function(player)
+			return GearService.canUse(player)
+		end,
+	})
 	stateRemote = Remotes.get("GearState")
 	Remotes.get("Gear").OnServerEvent:Connect(onGear)
 	if weaponService then
@@ -506,9 +537,20 @@ function GearService.init(weaponService)
 		states[player] = nil
 		lastAction[player] = nil
 	end)
+	local function watch(player)
+		player.ChildAdded:Connect(function(child)
+			if child:IsA("Backpack") then
+				task.defer(GearService.changed, player)
+			end
+		end)
+	end
+	Players.PlayerAdded:Connect(watch)
 	for _, player in Players:GetPlayers() do
+		watch(player)
 		if player.Character and not states[player] then
 			task.spawn(GearService.spawn, player)
+		elseif player.Character then
+			task.spawn(GearService.changed, player)
 		end
 	end
 end

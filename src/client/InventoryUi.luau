@@ -6,13 +6,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local ContextActionService = game:GetService("ContextActionService")
 
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Gear = require(Medical:WaitForChild("Gear").Gear)
 local GearConfig = require(Medical.Gear.Config)
 local Remotes = require(Medical.Remotes)
 local Ui = require(script.Parent.Ui)
+local InventoryInput = require(script.Parent.InventoryInput)
+local InventoryDrag = require(script.Parent.InventoryDrag)
 local T = Ui.Theme
 
 local InventoryUi = {}
@@ -21,9 +22,10 @@ local gearRemote
 local frame, sourceTitle, sourceList, contentTitle, contentList, weightLabel, staminaBar, staminaFill
 local slotBoxes: { [string]: any } = {}
 local snapshot = nil
-local source = { kind = "ground", items = {} }
+local source: any = { kind = "ground", items = {} }
 local selected = "uniform"
 local isOpen = false
+local dragger
 local staminaFn: () -> (number, boolean) = function()
 	return 1, false
 end
@@ -72,7 +74,7 @@ local function header(parent, order: number, text: string)
 	})
 end
 
-local function row(parent, order: number, text: string, right: string, onLeft, onRight, extra: { { any } }?)
+local function row(parent, order: number, text: string, right: string, onLeft, onRight, extra: { { any } }?, origin)
 	local b = Ui.button({ Text = "", Size = UDim2.new(1, -6, 0, 26), LayoutOrder = order, Parent = parent })
 	local extraWidth = if extra then #extra * 26 else 0
 	Ui.label({
@@ -104,8 +106,19 @@ local function row(parent, order: number, text: string, right: string, onLeft, o
 		})
 		mini.Activated:Connect(e[2])
 	end
-	b.Activated:Connect(onLeft)
-	b.MouseButton2Click:Connect(onRight)
+	b.Activated:Connect(function()
+		if dragger:clicked() then
+			onLeft()
+		end
+	end)
+	b.MouseButton2Click:Connect(function()
+		if dragger:clicked() then
+			onRight()
+		end
+	end)
+	if origin then
+		dragger:origin(b, origin)
+	end
 	return b
 end
 
@@ -138,11 +151,22 @@ local function renderSource()
 				end
 				local per = unit(id)
 				local right = if def.slot then kg(def.mass) else kg(def.mass * per)
-				row(sourceList, i * 2, def.name, right, function()
-					send("take", id, per, to)
-				end, function()
-					send("take", id, per * 5, to)
-				end)
+				row(
+					sourceList,
+					i * 2,
+					def.name,
+					right,
+					function()
+						send("take", id, per, to)
+					end,
+					function()
+						send("take", id, per * 5, to)
+					end,
+					nil,
+					function()
+						return { kind = "source", id = id, count = per, source = source.instance }
+					end
+				)
 			end
 		end
 	else
@@ -150,11 +174,27 @@ local function renderSource()
 		sourceTitle.Text = if #ids > 0 then "GROUND" else "GROUND  (drop items here)"
 		for i, id in ids do
 			local n = source.items[id]
-			row(sourceList, i, Gear.def(id).name, countText(id, n), function()
-				send("take", id, unit(id), to)
-			end, function()
-				send("take", id, n, to)
-			end)
+			row(
+				sourceList,
+				i,
+				Gear.def(id).name,
+				countText(id, n),
+				function()
+					send("take", id, unit(id), to)
+				end,
+				function()
+					send("take", id, n, to)
+				end,
+				nil,
+				function(one)
+					return {
+						kind = "source",
+						id = id,
+						count = if one then math.min(unit(id), n) else n,
+						source = source.instance,
+					}
+				end
+			)
 		end
 	end
 end
@@ -185,6 +225,14 @@ local function renderContents()
 	for i, itemId in sortedIds(items) do
 		local n = items[itemId]
 		local extra = {}
+		if Gear.def(itemId).equipable then
+			table.insert(extra, {
+				"E",
+				function()
+					send("equip", itemId)
+				end,
+			})
+		end
 		for _, c in Gear.CONTAINERS do
 			if c ~= selected and snapshot.slots[c] then
 				table.insert(extra, {
@@ -195,16 +243,35 @@ local function renderContents()
 				})
 			end
 		end
-		row(contentList, i, Gear.def(itemId).name, countText(itemId, n), function()
-			send("drop", itemId, unit(itemId), selected)
-		end, function()
-			send("drop", itemId, n, selected)
-		end, extra)
+		row(
+			contentList,
+			i,
+			Gear.def(itemId).name,
+			countText(itemId, n),
+			function()
+				send("drop", itemId, unit(itemId), selected)
+			end,
+			function()
+				send("drop", itemId, n, selected)
+			end,
+			extra,
+			function(one)
+				return {
+					kind = "contents",
+					id = itemId,
+					count = if one then math.min(unit(itemId), n) else n,
+					container = selected,
+				}
+			end
+		)
 	end
 end
 
 local function render()
 	if not snapshot or not frame then
+		return
+	end
+	if dragger and dragger:busy() then
 		return
 	end
 	if not snapshot.slots[selected] then
@@ -249,6 +316,9 @@ function InventoryUi.setOpen(value: boolean)
 		return
 	end
 	isOpen = value
+	if not value and dragger then
+		dragger:cancel()
+	end
 	frame.Visible = isOpen
 	if isOpen then
 		send("open")
@@ -298,6 +368,14 @@ local function slotBox(parent, slot: string, x: number, y: number, w: number, co
 		send("unwear", slot)
 	end)
 	local box = { button = b, name = name, drop = drop }
+	dragger:target(b, function()
+		local def = snapshot and snapshot.slots[slot] and Gear.def(snapshot.slots[slot])
+		return { kind = if container and def then "container" else "slot", name = slot }
+	end, 3)
+	dragger:origin(b, function()
+		local id = snapshot and snapshot.slots[slot]
+		return if id then { kind = "slot", id = id, slot = slot } else nil
+	end)
 	if container then
 		box.load = Ui.label({
 			Text = "",
@@ -344,6 +422,17 @@ function InventoryUi.init(screen: ScreenGui)
 
 	Ui.window(frame, 880, 540)
 	Ui.modal(frame)
+	dragger = InventoryDrag.new(screen, {
+		isOpen = InventoryUi.isOpen,
+		state = function()
+			return snapshot
+		end,
+		source = function()
+			return source
+		end,
+		send = send,
+		render = render,
+	})
 	Ui.make("TextButton", {
 		Name = "MouseUnlock",
 		Text = "",
@@ -362,7 +451,7 @@ function InventoryUi.init(screen: ScreenGui)
 		Parent = frame,
 	})
 	Ui.label({
-		Text = "LMB: one   RMB: bulk   U / V / B: transfer",
+		Text = "Drag stacks · Shift: one · RMB: bulk · E: equip",
 		TextSize = 12,
 		TextColor3 = T.TextDim,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -388,6 +477,9 @@ function InventoryUi.init(screen: ScreenGui)
 		Size = UDim2.new(0, 360, 1, -60),
 		Parent = frame,
 	}, { Ui.corner(6) })
+	dragger:target(left, function()
+		return { kind = "source" }
+	end)
 	sourceTitle = Ui.label({
 		Text = "GROUND",
 		Font = T.FontBold,
@@ -416,11 +508,30 @@ function InventoryUi.init(screen: ScreenGui)
 		Text = "",
 		Font = T.FontBold,
 		Position = UDim2.fromOffset(10, 134),
-		Size = UDim2.new(1, -20, 0, 20),
+		Size = UDim2.new(1, -150, 0, 20),
 		Parent = right,
 	})
-	contentList = Ui.scroll({ Position = UDim2.fromOffset(6, 158), Size = UDim2.new(1, -8, 1, -196), Parent = right })
+	local equip = Ui.button({
+		Text = "EQUIP ITEM",
+		TextSize = 11,
+		Position = UDim2.new(1, -132, 0, 134),
+		Size = UDim2.fromOffset(120, 20),
+		Parent = right,
+	})
+	dragger:target(equip, function()
+		return { kind = "equip" }
+	end, 3)
+	local contentRegion = Ui.make("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(6, 158),
+		Size = UDim2.new(1, -8, 1, -196),
+		Parent = right,
+	})
+	contentList = Ui.scroll({ Size = UDim2.fromScale(1, 1), Parent = contentRegion })
 	Ui.list(3).Parent = contentList
+	dragger:target(contentRegion, function()
+		return { kind = "container", name = selected }
+	end, 2)
 	weightLabel = Ui.label({
 		Text = "",
 		Font = T.FontBold,
@@ -461,15 +572,9 @@ function InventoryUi.init(screen: ScreenGui)
 	end)
 
 	local key = Enum.KeyCode[GearConfig.InventoryKey] or Enum.KeyCode.I
-	ContextActionService:BindActionAtPriority("HellboundInventory", function(_, inputState)
-		if UserInputService:GetFocusedTextBox() or (Ui.isModalOpen() and not isOpen) then
-			return Enum.ContextActionResult.Pass
-		end
-		if inputState == Enum.UserInputState.Begin then
-			InventoryUi.toggle()
-		end
-		return Enum.ContextActionResult.Sink
-	end, false, Enum.ContextActionPriority.High.Value + 1, key)
+	InventoryInput.bind(key, InventoryUi.toggle, function()
+		return isOpen or not Ui.isModalOpen()
+	end)
 	UserInputService.InputBegan:Connect(function(input)
 		if input.KeyCode == Enum.KeyCode.Escape and isOpen and not UserInputService:GetFocusedTextBox() then
 			InventoryUi.setOpen(false)

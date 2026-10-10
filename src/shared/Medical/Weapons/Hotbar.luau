@@ -3,6 +3,7 @@ local Gear = require(script.Parent.Parent.Gear.Gear)
 local Hotbar = {}
 Hotbar.Keys = { "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine" }
 local weaponSlots = { primary = 1, handgun = 2, launcher = 3 }
+local equipmentSlots = { Hammer = 4, Radio = 5 }
 
 function Hotbar.layout(entries)
 	local sorted = table.clone(entries)
@@ -12,7 +13,7 @@ function Hotbar.layout(entries)
 	local slots, extra = {}, {}
 	for _, entry in sorted do
 		local def = entry.weaponId and Gear.def(entry.weaponId)
-		local slot = def and weaponSlots[def.slot]
+		local slot = (def and weaponSlots[def.slot]) or (entry.itemId and equipmentSlots[entry.itemId])
 		if slot and not slots[slot] then
 			slots[slot] = entry
 		else
@@ -20,8 +21,8 @@ function Hotbar.layout(entries)
 		end
 	end
 	for i, entry in extra do
-		if i + 3 <= #Hotbar.Keys then
-			slots[i + 3] = entry
+		if i + 5 <= #Hotbar.Keys then
+			slots[i + 5] = entry
 		end
 	end
 	return slots

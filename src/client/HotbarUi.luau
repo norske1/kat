@@ -55,6 +55,7 @@ function HotbarUi.init(screen: ScreenGui, inventory)
 							tool = tool,
 							name = tool.Name,
 							weaponId = tool:GetAttribute("WeaponId"),
+							itemId = tool:GetAttribute("GearItemId"),
 						})
 					end
 				end

@@ -100,6 +100,19 @@ function Gear.count(state: State, id: string): number
 	return n
 end
 
+function Gear.equipment(state: State): { [string]: boolean }
+	local wanted = {}
+	for _, bag in state.items do
+		for id, n in bag do
+			local def = Gear.def(id)
+			if n > 0 and def and def.equipable then
+				wanted[id] = true
+			end
+		end
+	end
+	return wanted
+end
+
 -- How many of `id` still fit in container `c`.
 function Gear.room(state: State, c: string, id: string): number
 	local def = Gear.def(id)
