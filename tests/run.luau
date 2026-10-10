@@ -993,7 +993,7 @@ test("interaction prompts: F/G/V shortcuts, no bare-click triggers, V card is ke
 		return p
 	end
 	local seat = prompt(nil, 0)
-	expect(seat.KeyboardKeyCode == Roblox.Enum.KeyCode.Unknown, "cards without a shortcut are click-only")
+	expect(seat.KeyboardKeyCode == Interaction.NoKeyboard, "cards without a shortcut are click-only")
 	expect(seat.ClickablePrompt == false, "Roblox must not trigger prompts on a bare click")
 	expect(seat.Style == Roblox.Enum.ProximityPromptStyle.Custom)
 	expect(Interaction.clickable(seat))
@@ -1007,7 +1007,13 @@ test("interaction prompts: F/G/V shortcuts, no bare-click triggers, V card is ke
 		Interaction.clickable(build) and Interaction.clickable(dismantle),
 		"held actions may also be held on the card"
 	)
-	expect(prompt("Q", 0).KeyboardKeyCode == Roblox.Enum.KeyCode.Unknown, "unknown shortcuts are ignored")
+	expect(prompt("Q", 0).KeyboardKeyCode == Interaction.NoKeyboard, "unknown shortcuts are ignored")
+	-- Mouse/touch InputObjects carry KeyCode Unknown, so Unknown on either slot means "any click triggers me".
+	local unknown = Roblox.Enum.KeyCode.Unknown
+	for _, p in { seat, cargo, build, dismantle } do
+		expect(p.KeyboardKeyCode ~= unknown and p.GamepadKeyCode ~= unknown, "no prompt may match a mouse click")
+	end
+	expect(Interaction.NoKeyboard ~= Interaction.NoGamepad and Interaction.NoKeyboard.EnumType == Roblox.Enum.KeyCode)
 end)
 
 local Cargo = Harness.require("Logistics/Cargo")
