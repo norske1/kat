@@ -197,6 +197,7 @@ local function build(typeId: string, def: VehicleConfig.VehicleDef, cf: CFrame):
 		p.Color = DARK
 		p.TopSurface = Enum.SurfaceType.Smooth
 		p.Massless = true
+		p.CanTouch = false
 		p.CFrame = hull.CFrame * CFrame.new(offset)
 		if vehicleSeat then
 			local vs = p :: VehicleSeat

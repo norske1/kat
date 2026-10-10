@@ -10,6 +10,7 @@ local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Remotes = require(Medical.Remotes)
 local VehicleConfig = require(Medical.Vehicles.Config)
 local Ui = require(script.Parent.Ui)
+local InteractionInput = require(script.Parent.InteractionInput)
 local T = Ui.Theme
 
 local VehicleClient = {}
@@ -73,7 +74,11 @@ function VehicleClient.init(screen: ScreenGui)
 		Parent = screen,
 	})
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if not processed and input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if
+			not processed
+			and not InteractionInput.isHeld()
+			and input.UserInputType == Enum.UserInputType.MouseButton1
+		then
 			firing = true
 		end
 	end)
@@ -95,26 +100,34 @@ function VehicleClient.init(screen: ScreenGui)
 			return
 		end
 		local hull = model.PrimaryPart
+		if InteractionInput.isHeld() then
+			firing = false
+		end
 		local role = seat:GetAttribute("Role")
-		local hint = "F: switch seat   Space: get out"
+		local hint = "Alt + click: interact   Space: get out"
 		if role == "driver" and seat:IsA("VehicleSeat") then
 			drive(dt, def, seat, hull)
 			hint = if def.kind == "heli"
 				then "W/S: speed   A/D: turn   E/Q: climb / descend   Space: get out"
-				else "WASD: drive   F: switch seat   Space: get out"
+				else "WASD: drive   Alt + click: interact   Space: get out"
 		elseif role == "gunner" and def.turret then
 			local dir = workspace.CurrentCamera.CFrame.LookVector
 			local now = os.clock()
-			if firing and not Ui.isModalOpen() and now - lastShot >= 60 / def.turret.rpm then
+			if
+				firing
+				and not Ui.isModalOpen()
+				and not InteractionInput.isHeld()
+				and now - lastShot >= 60 / def.turret.rpm
+			then
 				lastShot = now
 				remote:FireServer("fire", model, dir)
 			elseif now - lastAim > 0.1 then
 				lastAim = now
 				remote:FireServer("aim", model, dir)
 			end
-			hint = "Mouse: aim   Left click: fire   F: switch seat"
+			hint = "Mouse: aim   Left click: fire   Alt + click: interact"
 		end
-		hint ..= "   G: cargo"
+		hint ..= "   Alt: cargo / seats"
 		local hp = (model:GetAttribute("Health") or 0) / math.max(1, model:GetAttribute("MaxHealth") or 1)
 		local kmh = hull.AssemblyLinearVelocity.Magnitude * 0.28 * 3.6
 		local cargo = model:GetAttribute("SupplyCap") or 0

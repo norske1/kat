@@ -1,6 +1,5 @@
 --!nonstrict
--- Weapon lockers on the client: highlights the locker item under the cursor (or the crosshair while a gun
--- is out) and asks the server to equip it on click / tap. The server validates distance and state.
+-- Hold Alt to select a locker item with the cursor; the server validates every take.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -10,6 +9,7 @@ local Medical = ReplicatedStorage:WaitForChild("Medical")
 local WeaponConfig = require(Medical:WaitForChild("Weapons").Config)
 local Remotes = require(Medical.Remotes)
 local Ui = require(script.Parent.Parent.Ui)
+local InteractionInput = require(script.Parent.Parent.InteractionInput)
 
 local LockerClient = {}
 
@@ -30,10 +30,11 @@ local function pick(ray: Ray?): BasePart?
 	if ray then
 		cast = ray
 	else
-		local point = if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter
-			then camera.ViewportSize / 2
-			else UserInputService:GetMouseLocation()
-		cast = camera:ViewportPointToRay(point.X, point.Y)
+		local cursor = InteractionInput.cursorRay()
+		if not cursor then
+			return nil
+		end
+		cast = cursor
 	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -68,7 +69,7 @@ function LockerClient.hovering(): boolean
 end
 
 local function take(slot: BasePart?)
-	if slot then
+	if slot and InteractionInput.isActive() then
 		remote:FireServer(slot)
 	end
 end
@@ -104,13 +105,10 @@ function LockerClient.init(screen: ScreenGui)
 		if not UserInputService.MouseEnabled and not UserInputService.GamepadEnabled then
 			return -- touch only: picked on tap
 		end
-		setHovered(if Ui.isModalOpen() or UserInputService:GetFocusedTextBox() then nil else pick(nil))
+		setHovered(if InteractionInput.isActive() then pick(nil) else nil)
 		if hovered then
-			local camera = workspace.CurrentCamera
-			local point = if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter and camera
-				then camera.ViewportSize / 2
-				else UserInputService:GetMouseLocation()
-			tip.Position = UDim2.fromOffset(point.X + 18, point.Y + 18)
+			local point = UserInputService:GetMouseLocation()
+			tip.Position = UDim2.fromOffset(point.X + 18, math.max(16, point.Y - 36))
 		end
 	end)
 

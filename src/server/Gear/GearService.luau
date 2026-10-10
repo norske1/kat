@@ -163,7 +163,7 @@ local function makePile(player: Player): BasePart?
 	part.CFrame = CFrame.new(floor + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, math.rad(math.random(0, 359)), 0)
 	part.Anchored = true
 	part.CanCollide = false
-	part.CanQuery = false
+	part.CanQuery = true
 	part.Color = Color3.fromRGB(88, 82, 62)
 	part.Material = Enum.Material.Fabric
 	local folder = workspace:FindFirstChild("DroppedGear")

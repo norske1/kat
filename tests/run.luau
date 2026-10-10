@@ -33,6 +33,81 @@ local function expect(cond: any, msg: string?)
 	end
 end
 
+test("interaction mode requires Alt and a usable, focused character", function()
+	local Interaction = Harness.require("Interaction")
+	local context = {
+		held = true,
+		focused = true,
+		modal = false,
+		typing = false,
+		hasCharacter = true,
+		alive = true,
+		conscious = true,
+	}
+	expect(Interaction.active(context))
+	for _, key in { "held", "focused", "hasCharacter", "alive", "conscious" } do
+		local changed = table.clone(context)
+		changed[key] = false
+		expect(not Interaction.active(changed), key .. " must cancel interactions")
+	end
+	for _, key in { "modal", "typing" } do
+		local changed = table.clone(context)
+		changed[key] = true
+		expect(not Interaction.active(changed), key .. " blocks world input")
+	end
+end)
+
+test("cursor rays use screen coordinates, never the camera centre", function()
+	local Interaction = Harness.require("Interaction")
+	local calls = {}
+	local expectedRay = { Origin = "cursor origin", Direction = "cursor direction" }
+	local camera = {
+		ViewportSize = { X = 1920, Y = 1080 },
+		CFrame = { LookVector = "centre direction" },
+		ScreenPointToRay = function(_, x, y)
+			table.insert(calls, { x, y })
+			return expectedRay
+		end,
+	}
+	expect(Interaction.cursorRay(camera, { X = 1417, Y = 283 }) == expectedRay)
+	expect(calls[1][1] == 1417 and calls[1][2] == 283, "off-centre cursor preserved, including GUI inset")
+	expect(Interaction.cursorRay(camera, { X = 72, Y = 811 }) == expectedRay)
+	expect(calls[2][1] == 72 and calls[2][2] == 811, "a different cursor changes the ray")
+	expect(Interaction.cursorRay(nil, { X = 0, Y = 0 }) == nil, "camera replacement is safe")
+end)
+
+test("interaction targets group actors and vehicles but not neighbouring base objects", function()
+	local Interaction = Harness.require("Interaction")
+	local Instance = require("@lune/roblox").Instance
+	local base = Instance.new("Model")
+	local first = Instance.new("Part")
+	first.Parent = base
+	local second = Instance.new("Part")
+	second.Parent = base
+	expect(Interaction.target(first, false) == first, "deployment posts stay separate")
+	expect(Interaction.target(second, false) == second)
+	local vehicle = Instance.new("Model")
+	local hull = Instance.new("Part")
+	hull.Parent = vehicle
+	vehicle.PrimaryPart = hull
+	expect(Interaction.target(hull, false) == vehicle, "vehicle seat and cargo share a target")
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = hull
+	expect(Interaction.target(attachment, false) == vehicle)
+	local actor = Instance.new("Model")
+	local humanoid = Instance.new("Humanoid")
+	humanoid.Parent = actor
+	local root = Instance.new("Part")
+	root.Parent = actor
+	expect(Interaction.target(root, false) == actor, "all body parts select the patient")
+	expect(Interaction.target(first, true) == base, "arsenal shelves share their tagged model")
+	expect(Interaction.target(vehicle, false) == vehicle)
+	expect(Interaction.target(nil, false) == nil)
+	base:Destroy()
+	vehicle:Destroy()
+	actor:Destroy()
+end)
+
 local function run(p, seconds: number, each: ((number) -> boolean?)?)
 	for t = 1, seconds do
 		Simulation.step(p, 1)

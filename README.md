@@ -68,11 +68,11 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 
 | Key | Action |
 |---|---|
-| F (prompt) | Open the medical menu on a nearby patient |
+| Left Alt (hold) + click Treat | Open the medical menu on the patient under your cursor |
 | H | Self-treatment menu |
 | X | Cancel the current treatment (also stops repeating CPR) |
-| G | Drop a carried / dragged patient |
-| I | Toggle the medical bag |
+| Left Alt (hold) + G | Drop a carried / dragged patient |
+| I | Toggle field inventory (the medical bag is on its HUD button) |
 | F2 | Toggle the debug panel (Studio / admins only, hidden by default) |
 
 **Guns** (equip with the hotbar, 1/2/3):
@@ -83,7 +83,7 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 | Right mouse | Aim down sights (zooms in, lower mouse sensitivity) |
 | R | Reload |
 | V | Switch fire mode (M4A1: auto / semi) |
-| Left Alt (hold) | Free the mouse cursor |
+| Left Alt (hold) | Free the cursor and reveal the targeted object's interactions; blocks firing |
 | Left Shift (hold) | Sprint (gun lowered, can't shoot) |
 | C | Crouch / stand (lowers your hitbox) |
 | Q / E | Lean left / right (press again to stand straight) |
@@ -279,7 +279,7 @@ Chat uses Roblox's TextChatService (so Roblox's text filter still applies), with
 - **Minimap** (top right): north-up, centred on you, showing the grid, objectives in their owner's colour, main bases, friendlies (green = your squad, blue = the rest of your side) and pings.
 - **Fullscreen map**: press **M**. It shows the whole battlefield with lettered/numbered grid squares and player names. Left click places a ping, right click clears your pings. The main menu moved to **P**.
 - **Compass** (top centre): bearing, your grid square, and pings marked on the strip.
-- **Pings**: press **T** to ping where you're looking. Pings show on the map, minimap, compass and in the world with a distance.
+- **Pings**: press **T** to ping the world surface under your **cursor**, not the centre of the camera. Hold **Left Alt** to unlock/move the cursor in first person, then press T. The ray uses screen coordinates (including Roblox's top-bar inset) and ignores your character and first-person viewmodel. Pings show on the map, minimap, compass and in the world with a distance. Fullscreen-map clicks still ping the clicked map position.
   - Squad members' pings: only their squad sees them.
   - Squad Commander pings: every squad on the side.
   - Commander pings: everyone on the side. Enemies never see your pings.
@@ -292,11 +292,17 @@ The game uses **true R6** characters. Both Rojo projects set `StarterPlayer.Game
 
 Menus use a shared charcoal/amber tactical theme with thin borders, button hover feedback, and windows scaled to the viewport. The main menu has a left-hand operations panel; medical, inventory, squads and construction use the same visual language.
 
-World interactions use **custom Hellbound cards**, not Roblox's default prompt UI. Cards show the object, keyboard/gamepad key, action and a hold-progress bar. They support click/touch-and-hold as well as keyboard and gamepad input. Roblox's proximity/input plumbing remains underneath, with server-side checks. The cards hide while menus are open, while typing or while unconscious. Your own medical prompt is hidden locally.
+World interactions are **hold-Alt, cursor-targeted**, ArmA-style:
+
+1. Get within reach, **hold Left Alt**, and point at a player, vehicle or object.
+2. The selected target is highlighted and its custom action cards open beside the cursor. Move onto a card and **left-click**; for longer actions, keep the mouse button held until the progress bar completes.
+3. **Release Alt** to hide the actions and cancel an unfinished hold. Moving out of reach, opening a modal, typing, becoming unconscious or losing window focus also disables interactions.
+
+No interaction prompts appear simply because you are nearby. Only the selected object's actions are enabled locally. Native F/G world-prompt activation is disabled; Roblox's prompt hold/trigger pipeline remains underneath and the server still validates each action. Weapon-locker item clicks also require Alt. Personal menus (I/H/P/M), vehicle exit (Space), and actions inside an already-open menu keep their normal controls. Weapon and mounted-gun firing are blocked while Alt is held.
 
 ## Vehicles
 
-Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up to a post and hold **F** to deploy. The post shows how many are out and when the next one is ready.
+Each main base has a **vehicle pad** with a motor pool post per vehicle: hold **Left Alt**, point at a post and click/hold its **Deploy** action. The post shows how many are out and when the next one is ready.
 
 | Vehicle | Max per side | Cooldown | Seats | Gun |
 | --- | --- | --- | --- | --- |
@@ -307,8 +313,8 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up
 | Helicopter | 2 | 8 min | pilot, 6 | none |
 
 - **Cooldowns:** every vehicle starts its own timer when it's deployed. A new one can only spawn while fewer than the max are alive and a timer has run out.
-- **Seats:** press **F** near a vehicle to get in or switch seats, and **Space** to get out. Only your own side can get in.
-- **Cargo inventory:** press **G** near or inside a friendly vehicle to open its cargo screen. It shows onboard supplies/capacity and the nearby depot. Select **50 / 100 / 250 / 500 / ALL**, then click **Load into vehicle** or **Unload to depot**. **G**, **Escape** or **X** closes it.
+- **Seats:** hold **Left Alt**, point at the vehicle and click **Get in / switch seat**. **Space** gets you out. Only your own side can get in.
+- **Cargo inventory:** hold **Left Alt**, point at a friendly vehicle and click **Open cargo inventory**. It shows onboard supplies/capacity and the nearby depot. Select **50 / 100 / 250 / 500 / ALL**, then click **Load into vehicle** or **Unload to depot**. **G**, **Escape** or **X** closes it.
   - At **main**, loading draws from unlimited supplies; unloading returns cargo to main.
   - Inside a **friendly FOB** radius, transfers work both ways between its stock (maximum 3000) and the vehicle. Amounts are clamped to available stock and free space.
   - Away from a depot you can inspect cargo, but transfer buttons are disabled. Cargo closes if you move out of interaction range, die, become unconscious, switch sides or the vehicle is destroyed/despawned.
@@ -323,13 +329,13 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up
 
 ## Logistics and base building
 
-- **Supplies:** use the **G cargo inventory** on a friendly vehicle to load supplies at main and unload them into a friendly FOB (max 3000). Trucks carry 1000 and smaller vehicles have their own configurable capacities. You can also reload from a stocked FOB.
+- **Supplies:** use the **Alt + click cargo inventory** on a friendly vehicle to load supplies at main and unload them into a friendly FOB (max 3000). Trucks carry 1000 and smaller vehicles have their own configurable capacities. You can also reload from a stocked FOB.
 - **Placing (Squad Commanders and the Commander only):** press **B** for the build menu, pick a structure, then move the green ghost with the mouse. **R** rotates, left click places, right click cancels.
   - A **FOB Radio** is free, but must be 300 studs from a main base and 250 from another FOB.
   - Everything else must be inside a friendly FOB's 150-stud radius and is paid from that FOB's supplies when placed: HAB 300 (one per FOB), Ammo Crate 150, Bunker 250, HESCO 60, Sandbags 20, Razor Wire 15.
-- **Building (everyone):** placed structures are see-through blueprints. Hold **F** on one with a **Hammer** in your inventory; each hit adds one build point until it's solid.
+- **Building (everyone):** placed structures are see-through blueprints. Hold **Left Alt**, point at one and hold its **Build** action with a **Hammer** in your inventory; each completed hold adds one build point until it's solid.
 - **Structures:** a finished Ammo Crate works like an arsenal (press I next to it). A finished **HAB** shows on the map: click it on the fullscreen map (M) to respawn there. You spawn at main instead if an enemy is within 40 studs of it.
-- **Removing:** leaders can hold **G** to remove their side's structures (supplies are refunded). Enemies can hold **G** for 6 seconds on a FOB radio to dismantle the whole FOB.
+- **Removing:** hold **Left Alt**, target the structure and hold **Remove** (leaders, supplies refunded) or **Dismantle** (enemy FOB radio, 6 seconds).
 - Everything is cleared when a new round starts. Settings: `src/shared/Medical/Logistics/Config.luau`. Models are placeholder blocks.
 
 ## Roblox content and maturity

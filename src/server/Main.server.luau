@@ -8,11 +8,25 @@ local RunService = game:GetService("RunService")
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Config = require(Medical.Config)
 local Remotes = require(Medical.Remotes)
+local Interaction = require(Medical.Interaction)
 Remotes.init()
 
 local function customPrompt(inst: Instance)
 	if inst:IsA("ProximityPrompt") then
 		inst.Style = Enum.ProximityPromptStyle.Custom
+		inst:SetAttribute("InteractionEnabled", inst.Enabled)
+		inst:GetPropertyChangedSignal("Enabled"):Connect(function()
+			inst:SetAttribute("InteractionEnabled", inst.Enabled)
+		end)
+		local parent = inst.Parent
+		local model = parent and parent:FindFirstAncestorOfClass("Model")
+		local target = Interaction.target(parent, model ~= nil and CollectionService:HasTag(model, "Arsenal"))
+		if target then
+			local link = Instance.new("ObjectValue")
+			link.Name = "InteractionTarget"
+			link.Value = target
+			link.Parent = inst
+		end
 	end
 end
 workspace.DescendantAdded:Connect(customPrompt)

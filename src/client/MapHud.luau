@@ -1,6 +1,6 @@
 --!nonstrict
 -- Minimap (top right), fullscreen map (M), compass (top centre) and pings. North is -Z.
--- Ping: T where you're looking, or left click on the fullscreen map; right click on the map clears yours.
+-- Ping: T at the cursor, or left click on the fullscreen map; right click on the map clears yours.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,6 +11,7 @@ local Medical = ReplicatedStorage:WaitForChild("Medical")
 local GameConfig = require(Medical.GameMode.Config)
 local Remotes = require(Medical.Remotes)
 local Ui = require(script.Parent.Ui)
+local InteractionInput = require(script.Parent.InteractionInput)
 local T = Ui.Theme
 
 local MapHud = {}
@@ -363,13 +364,11 @@ local function groundAt(x: number, z: number): Vector3
 	return if hit then hit.Position else Vector3.new(x, 0, z)
 end
 
-local function pingAhead()
-	local camera = workspace.CurrentCamera
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = if player.Character then { player.Character } else {}
-	local origin = camera.CFrame.Position
-	local hit = workspace:Raycast(origin, camera.CFrame.LookVector * 1500, params)
+local function pingAtCursor()
+	if Ui.isModalOpen() or UserInputService:GetFocusedTextBox() then
+		return
+	end
+	local hit = InteractionInput.cast(1500)
 	if hit then
 		pingRemote:FireServer("enemy", hit.Position)
 	end
@@ -505,7 +504,7 @@ function MapHud.init(screen: ScreenGui)
 		if input.KeyCode == cfg.Key and player.Character then
 			MapHud.setOpen(not mapOpen)
 		elseif input.KeyCode == cfg.PingKey and player.Character then
-			pingAhead()
+			pingAtCursor()
 		elseif input.KeyCode == Enum.KeyCode.Escape and mapOpen then
 			MapHud.setOpen(false)
 		end

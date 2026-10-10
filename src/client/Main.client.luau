@@ -11,6 +11,7 @@ local Remotes = require(Medical.Remotes)
 local Menu = require(script.Parent.Menu)
 local Hud = require(script.Parent.Hud)
 local Effects = require(script.Parent.Effects)
+local InteractionInput = require(script.Parent.InteractionInput)
 
 local player = Players.LocalPlayer
 
@@ -118,7 +119,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 	elseif key == Enum.KeyCode.X then
 		Remotes.get("CancelAction"):FireServer()
-	elseif key == Config.DropCarryKey then
+	elseif key == Config.DropCarryKey and InteractionInput.isActive() then
 		Remotes.get("DropCarry"):FireServer()
 	elseif key == Enum.KeyCode.I and not InventoryUi then
 		Hud.toggleBag()
