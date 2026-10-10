@@ -14,7 +14,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Teams = game:GetService("Teams")
 
 local Medical = ReplicatedStorage:WaitForChild("Medical")
-local CharacterLook = require(script.Parent.Parent.CharacterLook)
 local GameConfig = require(Medical.GameMode.Config)
 local Rules = require(Medical.GameMode.Rules)
 local MedicalService = require(script.Parent.Parent.MedicalService)
@@ -336,7 +335,7 @@ local function checkWinner()
 		broadcast("New round started", "info")
 		for _, player in Players:GetPlayers() do
 			if GameService.sideOf(player) then
-				task.spawn(CharacterLook.load, player)
+				task.spawn(player.LoadCharacter, player)
 			end
 		end
 	end)
@@ -424,7 +423,7 @@ local function onCharacter(player: Player, character: Model)
 		chargeDeath(player, character)
 		task.delay(GameConfig.RespawnSeconds, function()
 			if player.Parent and player.Character == character and GameService.sideOf(player) then
-				CharacterLook.load(player)
+				player:LoadCharacter()
 			end
 		end)
 	end)
@@ -471,7 +470,7 @@ function GameService.join(player: Player, side: any)
 	end
 	player.Team = teams[side]
 	result(player, true)
-	CharacterLook.load(player)
+	player:LoadCharacter()
 end
 
 local function onPlayer(player: Player)

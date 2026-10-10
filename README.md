@@ -318,10 +318,6 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up
 - **Removing:** leaders can hold **G** to remove their side's structures (supplies are refunded). Enemies can hold **G** for 6 seconds on a FOB radio to dismantle the whole FOB.
 - Everything is cleared when a new round starts. Settings: `src/shared/Medical/Logistics/Config.luau`. Models are placeholder blocks.
 
-## Characters
-
-Everyone spawns as an **R15** rig with the classic blocky body parts and classic scaling (`src/server/CharacterLook.luau`), so characters look like R6 but keep R15 joints for animations, crouch, lean and ragdoll. Players keep their own clothes, face, accessories and skin colours. The project sets the place's avatar type to R15; if Output warns that characters are R6, set Home > Game Settings > Avatar > Avatar Type to R15.
-
 ## Roblox content and maturity
 
 - Medications use fictional game names (Analgesic, Adrenaline, Clotting Agent, Reversal Spray...), not real drug or brand names. Equipment brand names were replaced with generic ones (Hemostatic Gauze, Airway Tube, Suction Pump, Clot Tester).
