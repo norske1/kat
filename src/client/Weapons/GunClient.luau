@@ -15,6 +15,7 @@ local Sounds = require(Medical.Sounds)
 local Animator = require(script.Parent.Parent.Animator)
 local Menu = require(script.Parent.Parent.Menu)
 local Hud = require(script.Parent.Parent.Hud)
+local Ui = require(script.Parent.Parent.Ui)
 local GunFx = require(script.Parent.GunFx)
 local Viewmodel = require(script.Parent.Viewmodel)
 local Movement = require(script.Parent.Movement)
@@ -58,7 +59,7 @@ end
 local inventoryOk, InventoryUi = pcall(require, script.Parent.Parent.InventoryUi)
 local mapOk, MapHud = pcall(require, script.Parent.Parent.MapHud)
 local function inventoryOpen(): boolean
-	return (inventoryOk and InventoryUi.isOpen()) or (mapOk and MapHud.isOpen())
+	return Ui.isModalOpen() or (inventoryOk and InventoryUi.isOpen()) or (mapOk and MapHud.isOpen())
 end
 
 local function mouseFree(): boolean

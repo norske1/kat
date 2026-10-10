@@ -252,7 +252,7 @@ local function makePrompt(record: Record): ProximityPrompt?
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = Config.MaxTreatmentDistance
 	prompt.RequiresLineOfSight = false
-	prompt.Style = Enum.ProximityPromptStyle.Default
+	prompt.Style = Enum.ProximityPromptStyle.Custom
 	prompt:SetAttribute("MedicalOwner", if record.player then record.player.UserId else 0)
 	prompt.Parent = root
 	prompt.Triggered:Connect(function(player)

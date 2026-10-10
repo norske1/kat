@@ -39,7 +39,7 @@ WeaponConfig.Viewmodel = {
 WeaponConfig.SprintSpeed = 1.45
 WeaponConfig.CrouchSpeed = 0.55
 WeaponConfig.AimSpeed = 0.75
-WeaponConfig.CrouchDrop = 1 -- studs the character (and its hitbox) is lowered when crouched (R15)
+WeaponConfig.CrouchDrop = 1 -- studs the character (and its hitbox) is lowered when crouched
 WeaponConfig.LeanOffset = 1.1 -- studs the camera moves sideways when leaning
 WeaponConfig.LeanAngle = 14 -- degrees of camera roll when leaning
 

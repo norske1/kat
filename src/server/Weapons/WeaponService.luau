@@ -368,14 +368,16 @@ local function setCrouch(character: Model, crouch: boolean)
 		return
 	end
 	character:SetAttribute("MoveCrouch", crouch or nil)
-	if humanoid.RigType == Enum.HumanoidRigType.R15 then
-		local base = character:GetAttribute("BaseHipHeight")
-		if not base then
-			base = humanoid.HipHeight
-			character:SetAttribute("BaseHipHeight", base)
-		end
-		humanoid.HipHeight = if crouch then math.max(base - WeaponConfig.CrouchDrop, 0.3) else base
+	local base = character:GetAttribute("BaseHipHeight")
+	if base == nil then
+		base = humanoid.HipHeight
+		character:SetAttribute("BaseHipHeight", base)
 	end
+	local lower = base - WeaponConfig.CrouchDrop
+	if humanoid.RigType == Enum.HumanoidRigType.R15 then
+		lower = math.max(lower, 0.3)
+	end
+	humanoid.HipHeight = if crouch then lower else base
 end
 
 local function resetStance(character: Model?)

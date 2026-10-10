@@ -417,6 +417,7 @@ function MapHud.init(screen: ScreenGui)
 		Visible = false,
 		Parent = screen,
 	})
+	Ui.modal(big)
 	bigCanvas = Ui.make("TextButton", {
 		Text = "",
 		AutoButtonColor = false,

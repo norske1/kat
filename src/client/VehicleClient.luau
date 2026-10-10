@@ -20,7 +20,11 @@ local firing = false
 local lastAim, lastShot = 0, 0
 
 local function key(code: Enum.KeyCode): number
-	return if UserInputService:GetFocusedTextBox() == nil and UserInputService:IsKeyDown(code) then 1 else 0
+	return if not Ui.isModalOpen()
+			and UserInputService:GetFocusedTextBox() == nil
+			and UserInputService:IsKeyDown(code)
+		then 1
+		else 0
 end
 
 local function drive(dt: number, def, seat: VehicleSeat, hull: BasePart)
@@ -30,6 +34,9 @@ local function drive(dt: number, def, seat: VehicleSeat, hull: BasePart)
 		return
 	end
 	local throttle, steer = seat.ThrottleFloat, seat.SteerFloat
+	if Ui.isModalOpen() or UserInputService:GetFocusedTextBox() then
+		throttle, steer = 0, 0
+	end
 	local target = if throttle > 0 then throttle * def.speed elseif throttle < 0 then throttle * def.reverse else 0
 	local rate = def.accel * (if target == 0 then 1.5 else 1)
 	speed += math.clamp(target - speed, -rate * dt, rate * dt)
@@ -98,7 +105,7 @@ function VehicleClient.init(screen: ScreenGui)
 		elseif role == "gunner" and def.turret then
 			local dir = workspace.CurrentCamera.CFrame.LookVector
 			local now = os.clock()
-			if firing and now - lastShot >= 60 / def.turret.rpm then
+			if firing and not Ui.isModalOpen() and now - lastShot >= 60 / def.turret.rpm then
 				lastShot = now
 				remote:FireServer("fire", model, dir)
 			elseif now - lastAim > 0.1 then
@@ -107,6 +114,7 @@ function VehicleClient.init(screen: ScreenGui)
 			end
 			hint = "Mouse: aim   Left click: fire   F: switch seat"
 		end
+		hint ..= "   G: cargo"
 		local hp = (model:GetAttribute("Health") or 0) / math.max(1, model:GetAttribute("MaxHealth") or 1)
 		local kmh = hull.AssemblyLinearVelocity.Magnitude * 0.28 * 3.6
 		local cargo = model:GetAttribute("SupplyCap") or 0

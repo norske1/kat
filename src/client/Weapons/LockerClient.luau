@@ -104,7 +104,7 @@ function LockerClient.init(screen: ScreenGui)
 		if not UserInputService.MouseEnabled and not UserInputService.GamepadEnabled then
 			return -- touch only: picked on tap
 		end
-		setHovered(pick(nil))
+		setHovered(if Ui.isModalOpen() or UserInputService:GetFocusedTextBox() then nil else pick(nil))
 		if hovered then
 			local camera = workspace.CurrentCamera
 			local point = if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter and camera

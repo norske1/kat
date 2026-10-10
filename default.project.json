@@ -13,6 +13,9 @@
       }
     },
     "StarterPlayer": {
+      "$properties": {
+        "GameSettingsAvatar": "R6"
+      },
       "StarterPlayerScripts": {
         "MedicalClient": {
           "$path": "src/client"

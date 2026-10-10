@@ -10,6 +10,16 @@ local Config = require(Medical.Config)
 local Remotes = require(Medical.Remotes)
 Remotes.init()
 
+local function customPrompt(inst: Instance)
+	if inst:IsA("ProximityPrompt") then
+		inst.Style = Enum.ProximityPromptStyle.Custom
+	end
+end
+workspace.DescendantAdded:Connect(customPrompt)
+for _, inst in workspace:GetDescendants() do
+	customPrompt(inst)
+end
+
 local MedicalService = require(script.Parent.MedicalService)
 local Inventory = require(script.Parent.Inventory)
 local ActionRunner = require(script.Parent.ActionRunner)
@@ -40,6 +50,10 @@ end
 
 -- Players ------------------------------------------------------------------
 local function onCharacter(player: Player, character: Model)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if humanoid and humanoid:IsA("Humanoid") and humanoid.RigType ~= Enum.HumanoidRigType.R6 then
+		warn("[Hellbound] Set Game Settings > Avatar > Avatar Type to R6 and save the place")
+	end
 	MedicalService.register(character, player)
 	Inventory.spawn(player)
 end

@@ -286,6 +286,14 @@ Chat uses Roblox's TextChatService (so Roblox's text filter still applies), with
   - Pings last 45 seconds. Each player has a limit (Commander 5, Squad Commander 3, others 2), and the oldest is replaced.
 - Settings: `GameConfig.Map` in `src/shared/Medical/GameMode/Config.luau`.
 
+## Interface and R6 characters
+
+The game uses **true R6** characters. Both Rojo projects set `StarterPlayer.GameSettingsAvatar` to R6; the previous blocky-R15 character override has been removed. If your existing Studio place still spawns R15, set **Game Settings > Avatar > Avatar Type: R6**, save, and restart Play. The server logs a warning when a character is not R6. Medical hit zones, ragdoll, carrying and third-person animation joints support R6; crouch uses a six-part pose and lowers the hitbox. First-person arms are a separate procedural viewmodel.
+
+Menus use a shared charcoal/amber tactical theme with thin borders, button hover feedback, and windows scaled to the viewport. The main menu has a left-hand operations panel; medical, inventory, squads and construction use the same visual language.
+
+World interactions use **custom Hellbound cards**, not Roblox's default prompt UI. Cards show the object, keyboard/gamepad key, action and a hold-progress bar. They support click/touch-and-hold as well as keyboard and gamepad input. Roblox's proximity/input plumbing remains underneath, with server-side checks. The cards hide while menus are open, while typing or while unconscious. Your own medical prompt is hidden locally.
+
 ## Vehicles
 
 Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up to a post and hold **F** to deploy. The post shows how many are out and when the next one is ready.
@@ -300,6 +308,12 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up
 
 - **Cooldowns:** every vehicle starts its own timer when it's deployed. A new one can only spawn while fewer than the max are alive and a timer has run out.
 - **Seats:** press **F** near a vehicle to get in or switch seats, and **Space** to get out. Only your own side can get in.
+- **Cargo inventory:** press **G** near or inside a friendly vehicle to open its cargo screen. It shows onboard supplies/capacity and the nearby depot. Select **50 / 100 / 250 / 500 / ALL**, then click **Load into vehicle** or **Unload to depot**. **G**, **Escape** or **X** closes it.
+  - At **main**, loading draws from unlimited supplies; unloading returns cargo to main.
+  - Inside a **friendly FOB** radius, transfers work both ways between its stock (maximum 3000) and the vehicle. Amounts are clamped to available stock and free space.
+  - Away from a depot you can inspect cargo, but transfer buttons are disabled. Cargo closes if you move out of interaction range, die, become unconscious, switch sides or the vehicle is destroyed/despawned.
+  - Configurable capacities: **Truck 1000, Helicopter 600, APC 300, IFV 200, MRAP 150**.
+  - The server owns every transfer and validates the registered vehicle, player/team, distance, vehicle health, quantity, source and capacity. Other viewers receive refreshed stock; menus never change supplies locally. Driving inputs and weapon fire are blocked while a menu is open.
 - **Driving:** WASD. Helicopters use W/S for speed, A/D to turn and E/Q to climb or descend.
 - **Gunner seat:** aim with the mouse, left click fires. The server checks the seat, fire rate and aim.
 - **Despawning:** a vehicle left empty for 2 minutes despawns.
@@ -309,7 +323,7 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up
 
 ## Logistics and base building
 
-- **Supplies:** drive a **Logistics Truck** (holds 1000) and hold **G** next to it. At your main base this loads it full. Inside a friendly FOB's radius it unloads into the FOB (max 3000).
+- **Supplies:** use the **G cargo inventory** on a friendly vehicle to load supplies at main and unload them into a friendly FOB (max 3000). Trucks carry 1000 and smaller vehicles have their own configurable capacities. You can also reload from a stocked FOB.
 - **Placing (Squad Commanders and the Commander only):** press **B** for the build menu, pick a structure, then move the green ghost with the mouse. **R** rotates, left click places, right click cancels.
   - A **FOB Radio** is free, but must be 300 studs from a main base and 250 from another FOB.
   - Everything else must be inside a friendly FOB's 150-stud radius and is paid from that FOB's supplies when placed: HAB 300 (one per FOB), Ammo Crate 150, Bunker 250, HESCO 60, Sandbags 20, Razor Wire 15.

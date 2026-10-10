@@ -326,16 +326,19 @@ function InventoryUi.init(screen: ScreenGui)
 		Parent = screen,
 	}, { Ui.corner(8) })
 
+	Ui.window(frame, 880, 540)
+	Ui.modal(frame)
+
 	Ui.label({
-		Text = "INVENTORY",
+		Text = "FIELD INVENTORY",
 		Font = T.FontBold,
 		TextSize = 18,
 		Position = UDim2.fromOffset(16, 10),
-		Size = UDim2.new(0, 300, 0, 24),
+		Size = UDim2.new(0, 210, 0, 24),
 		Parent = frame,
 	})
 	Ui.label({
-		Text = "Left click: one   Right click: five / all   U V B: move to container",
+		Text = "LMB: one   RMB: bulk   U / V / B: transfer",
 		TextSize = 12,
 		TextColor3 = T.TextDim,
 		TextXAlignment = Enum.TextXAlignment.Right,

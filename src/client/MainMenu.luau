@@ -184,6 +184,8 @@ local function buildSquadPage()
 		Visible = false,
 		Parent = gui,
 	})
+	Ui.fit(squadPage, 760, 490)
+	Ui.modal(squadPage)
 	centered({
 		Text = "SQUADS",
 		Font = T.FontBold,
@@ -496,11 +498,32 @@ local function build()
 
 	mainPage = Ui.make("Frame", {
 		Name = "Main",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(460, 340),
-		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0.07, 0.5),
+		Size = UDim2.fromOffset(440, 420),
+		BackgroundColor3 = T.Background,
+		BackgroundTransparency = 0.08,
 		Parent = gui,
+	})
+	Ui.window(mainPage, 520, 420)
+	Ui.modal(mainPage)
+	Ui.label({
+		Text = "OPERATIONS",
+		Font = T.FontMono,
+		TextSize = 11,
+		TextColor3 = T.Accent,
+		Position = UDim2.fromOffset(28, 25),
+		Size = UDim2.fromOffset(360, 16),
+		Parent = mainPage,
+	})
+	Ui.label({
+		Text = "P  /  MENU",
+		Font = T.FontMono,
+		TextSize = 10,
+		TextColor3 = T.TextDim,
+		Position = UDim2.fromOffset(28, 390),
+		Size = UDim2.fromOffset(360, 16),
+		Parent = mainPage,
 	})
 	careerPage = Ui.make("Frame", {
 		Name = "Career",
@@ -511,6 +534,8 @@ local function build()
 		Visible = false,
 		Parent = gui,
 	})
+	Ui.fit(careerPage, 420, 380)
+	Ui.modal(careerPage)
 	centered({
 		Text = "MY CAREER",
 		Font = T.FontBold,
@@ -560,11 +585,12 @@ local function build()
 	careerBack.Activated:Connect(function()
 		show("main")
 	end)
-	centered({
+	Ui.label({
 		Text = GameConfig.MenuTitle,
 		Font = T.FontBold,
 		TextSize = 52,
-		Size = UDim2.new(1, 0, 0, 60),
+		Size = UDim2.new(1, -56, 0, 60),
+		Position = UDim2.fromOffset(28, 48),
 		Parent = mainPage,
 	})
 	local join = Ui.button({
@@ -573,7 +599,7 @@ local function build()
 		TextSize = 22,
 		BackgroundColor3 = T.Accent,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Size = UDim2.fromOffset(280, 54),
+		Size = UDim2.fromOffset(384, 54),
 		Position = UDim2.new(0.5, 0, 0, 130),
 		Parent = mainPage,
 	})
@@ -585,7 +611,7 @@ local function build()
 		Font = T.FontBold,
 		TextSize = 18,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Size = UDim2.fromOffset(280, 40),
+		Size = UDim2.fromOffset(384, 40),
 		Position = UDim2.new(0.5, 0, 0, 196),
 		Parent = mainPage,
 	})
@@ -597,7 +623,7 @@ local function build()
 		Font = T.FontBold,
 		TextSize = 18,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Size = UDim2.fromOffset(280, 40),
+		Size = UDim2.fromOffset(384, 40),
 		Position = UDim2.new(0.5, 0, 0, 246),
 		Parent = mainPage,
 	})
@@ -615,7 +641,7 @@ local function build()
 		Font = T.FontBold,
 		TextSize = 18,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Size = UDim2.fromOffset(280, 40),
+		Size = UDim2.fromOffset(384, 40),
 		Position = UDim2.new(0.5, 0, 0, 296),
 		Visible = false,
 		Parent = mainPage,
@@ -631,6 +657,8 @@ local function build()
 		Visible = false,
 		Parent = gui,
 	})
+	Ui.fit(teamPage, 520, 360)
+	Ui.modal(teamPage)
 	centered({
 		Text = "SELECT TEAM",
 		Font = T.FontBold,

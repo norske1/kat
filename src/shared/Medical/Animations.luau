@@ -267,6 +267,11 @@ Animations.Crouch = {
 	LeftHip = { 72, 0, 0 },
 	LeftKnee = { -112, 0, 0 },
 } :: Pose
+Animations.CrouchR6 = {
+	Root = { 12, 0, 0 },
+	RightHip = { -20, 0, 12 },
+	LeftHip = { -20, 0, -12 },
+} :: Pose
 Animations.LeanAngle = 16 -- degrees of upper-body roll at full lean
 
 -- How much of the aim pitch each joint takes (sums to roughly 1 along the arm chain).
@@ -420,13 +425,13 @@ function Animations.gun(
 end
 
 -- Crouch (0..1) and lean (-1 left .. 1 right) layer. Returns nil when standing straight.
-function Animations.movement(crouch: number, lean: number): Pose?
+function Animations.movement(crouch: number, lean: number, r6: boolean?): Pose?
 	if crouch < 0.001 and math.abs(lean) < 0.001 then
 		return nil
 	end
-	local pose = Animations.add({}, Animations.Crouch, math.clamp(crouch, 0, 1))
+	local pose = Animations.add({}, if r6 then Animations.CrouchR6 else Animations.Crouch, math.clamp(crouch, 0, 1))
 	local roll = -math.clamp(lean, -1, 1) * Animations.LeanAngle
-	Animations.add(pose, { Waist = { 0, 0, roll }, Neck = { 0, 0, roll * 0.3 } })
+	Animations.add(pose, { [if r6 then "Root" else "Waist"] = { 0, 0, roll }, Neck = { 0, 0, roll * 0.3 } })
 	return pose
 end
 

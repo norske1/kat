@@ -796,6 +796,102 @@ test("logistics: placement rules and supplies", function()
 	expect(Logistics.transfer(1000, 2500, 3000) == 500, "FOB stock cap")
 end)
 
+local Cargo = Harness.require("Logistics/Cargo")
+
+test("R6 hit zones and crouch use the real six-part rig", function()
+	local BodyParts = Harness.require("BodyParts")
+	local Animations = Harness.require("Animations")
+	for name, part in
+		{
+			Head = "Head",
+			Torso = "Torso",
+			["Left Arm"] = "LeftArm",
+			["Right Arm"] = "RightArm",
+			["Left Leg"] = "LeftLeg",
+			["Right Leg"] = "RightLeg",
+		}
+	do
+		expect(BodyParts.fromInstanceName(name) == part)
+	end
+	local pose = Animations.movement(1, 0.5, true)
+	expect(pose ~= nil and pose.Root ~= nil and pose.Root[1] > 0, "R6 bends at the root")
+	expect(pose.RightHip ~= nil and pose.LeftHip ~= nil, "R6 hips")
+	expect(pose.Waist == nil and pose.RightKnee == nil and pose.LeftKnee == nil, "no R15-only joints")
+	expect(Animations.movement(0, 0, true) == nil, "standing has no override")
+end)
+
+test("cargo access requires a conscious living teammate within vehicle range", function()
+	local good = { side = "A", vehicleSide = "A", alive = true, conscious = true, distance = 12, range = 19 }
+	expect(Cargo.canAccess(good))
+	for key, value in { side = "B", vehicleSide = "B", alive = false, conscious = false, distance = 20 } do
+		local ctx = table.clone(good)
+		ctx[key] = value
+		expect(not Cargo.canAccess(ctx), key .. " should deny cargo access")
+	end
+	for _, distance in { -1, math.huge, 0 / 0 } do
+		local ctx = table.clone(good)
+		ctx.distance = distance
+		expect(not Cargo.canAccess(ctx), "invalid distance")
+	end
+	local lobby = table.clone(good)
+	lobby.side, lobby.vehicleSide = nil, nil
+	expect(not Cargo.canAccess(lobby), "lobby is not a logistics side")
+end)
+
+test("cargo loading and returning to main keeps unlimited source stock unchanged", function()
+	local state = { cargo = 200, capacity = 1000, stock = 0, stockCapacity = 3000, unlimited = true }
+	local cargo, stock, moved, why = Cargo.move(state, true, 100)
+	expect(cargo == 300 and stock == 0 and moved == 100 and why == nil)
+	cargo, stock, moved = Cargo.move(state, true, "all")
+	expect(cargo == 1000 and stock == 0 and moved == 800, "load only available space")
+	cargo, stock, moved = Cargo.move(state, false, "all")
+	expect(cargo == 0 and stock == 0 and moved == 200, "return cargo to main")
+end)
+
+test("cargo FOB transfers conserve supplies in both directions", function()
+	local state = { cargo = 250, capacity = 1000, stock = 600, stockCapacity = 3000, unlimited = false }
+	local cargo, stock, moved = Cargo.move(state, true, "all")
+	expect(cargo == 850 and stock == 0 and moved == 600, "cannot load nonexistent supplies")
+	state = { cargo = 1000, capacity = 1000, stock = 2750, stockCapacity = 3000, unlimited = false }
+	cargo, stock, moved = Cargo.move(state, false, "all")
+	expect(cargo == 750 and stock == 3000 and moved == 250, "cannot overflow a FOB")
+	state.cargo, state.stock = cargo, stock
+	cargo, stock, moved = Cargo.move(state, true, 100)
+	expect(cargo == 850 and stock == 2900 and moved == 100, "reload a partial quantity")
+	expect(cargo + stock == state.cargo + state.stock, "supplies conserved")
+end)
+
+test("cargo rejects noninteger, negative, infinite and malformed quantities without mutation", function()
+	local state = { cargo = 250, capacity = 1000, stock = 600, stockCapacity = 3000, unlimited = false }
+	for _, amount in { 0, -50, 1.5, math.huge, -math.huge, 0 / 0, "100", "", {}, true } do
+		local cargo, stock, moved, why = Cargo.move(state, true, amount)
+		expect(cargo == 250 and stock == 600 and moved == 0 and why ~= nil, "invalid quantity")
+	end
+	local cargo, stock, moved, why = Cargo.move(state, true, nil)
+	expect(cargo == 250 and stock == 600 and moved == 0 and why ~= nil, "missing quantity")
+end)
+
+test("cargo empty and full destinations never duplicate or discard supplies", function()
+	for _, loading in { true, false } do
+		local state = {
+			cargo = if loading then 1000 else 0,
+			capacity = 1000,
+			stock = 3000,
+			stockCapacity = 3000,
+			unlimited = false,
+		}
+		local cargo, stock, moved, why = Cargo.move(state, loading, "all")
+		expect(cargo == state.cargo and stock == state.stock and moved == 0 and why ~= nil)
+	end
+	-- Repeated concurrent requests are serialized by the server; each uses the latest balances.
+	local state = { cargo = 950, capacity = 1000, stock = 100, stockCapacity = 3000, unlimited = false }
+	local cargo, stock, moved = Cargo.move(state, true, 100)
+	expect(moved == 50)
+	state.cargo, state.stock = cargo, stock
+	cargo, stock, moved = Cargo.move(state, true, 100)
+	expect(moved == 0 and cargo == 1000 and stock == 50)
+end)
+
 print(("\n%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	local process = require("@lune/process")

@@ -53,7 +53,7 @@ Dummies.Scenarios = {
 
 function Dummies.spawn(cframe: CFrame, scenario: string?): Model?
 	local ok, model = pcall(function()
-		return Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
+		return Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R6)
 	end)
 	if not ok or not model then
 		warn("[Medical] could not create casualty rig: " .. tostring(model))
