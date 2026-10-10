@@ -15,6 +15,8 @@ local Sounds = require(Medical.Sounds)
 local Animator = require(script.Parent.Parent.Animator)
 local Menu = require(script.Parent.Parent.Menu)
 local Hud = require(script.Parent.Parent.Hud)
+local Ui = require(script.Parent.Parent.Ui)
+local InteractionInput = require(script.Parent.Parent.InteractionInput)
 local GunFx = require(script.Parent.GunFx)
 local Viewmodel = require(script.Parent.Viewmodel)
 local Movement = require(script.Parent.Movement)
@@ -58,15 +60,11 @@ end
 local inventoryOk, InventoryUi = pcall(require, script.Parent.Parent.InventoryUi)
 local mapOk, MapHud = pcall(require, script.Parent.Parent.MapHud)
 local function inventoryOpen(): boolean
-	return (inventoryOk and InventoryUi.isOpen()) or (mapOk and MapHud.isOpen())
+	return Ui.isModalOpen() or (inventoryOk and InventoryUi.isOpen()) or (mapOk and MapHud.isOpen())
 end
 
 local function mouseFree(): boolean
-	return not medical.conscious
-		or Menu.isOpen()
-		or Hud.wantsMouse()
-		or inventoryOpen()
-		or UserInputService:IsKeyDown(WeaponConfig.FreeMouseKey)
+	return not medical.conscious or Menu.isOpen() or Hud.wantsMouse() or inventoryOpen() or InteractionInput.isHeld()
 end
 
 local function isReloading(): boolean
@@ -476,6 +474,10 @@ local function renderStep(dt: number)
 		return
 	end
 	local free = mouseFree()
+	if InteractionInput.isHeld() then
+		triggerDown = false
+		aiming = false
+	end
 	UserInputService.MouseBehavior = if free then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
 	UserInputService.MouseIconEnabled = free
 
@@ -600,7 +602,7 @@ function GunClient.init(screen: ScreenGui)
 	end)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if not current or processed then
+		if not current or processed or InteractionInput.isHeld() then
 			return
 		end
 		local inputType = input.UserInputType

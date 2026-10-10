@@ -4,6 +4,9 @@ local GearConfig = require(script.Parent.Config)
 local Items = require(script.Parent.Parent.Items)
 
 local Gear = {}
+function Gear.canOpen(ctx): boolean
+	return ctx.hasCharacter and ctx.alive and ctx.conscious and not ctx.typing and (ctx.alreadyOpen or not ctx.modal)
+end
 
 Gear.WEAPON_SLOTS = { "primary", "handgun", "launcher" }
 Gear.CONTAINERS = { "uniform", "vest", "backpack" }
@@ -95,6 +98,19 @@ function Gear.count(state: State, id: string): number
 		n += state.items[c][id] or 0
 	end
 	return n
+end
+
+function Gear.equipment(state: State): { [string]: boolean }
+	local wanted = {}
+	for _, bag in state.items do
+		for id, n in bag do
+			local def = Gear.def(id)
+			if n > 0 and def and def.equipable then
+				wanted[id] = true
+			end
+		end
+	end
+	return wanted
 end
 
 -- How many of `id` still fit in container `c`.

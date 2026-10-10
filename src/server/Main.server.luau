@@ -8,7 +8,31 @@ local RunService = game:GetService("RunService")
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Config = require(Medical.Config)
 local Remotes = require(Medical.Remotes)
+local Interaction = require(Medical.Interaction)
 Remotes.init()
+
+local function customPrompt(inst: Instance)
+	if inst:IsA("ProximityPrompt") then
+		inst.Style = Enum.ProximityPromptStyle.Custom
+		inst:SetAttribute("InteractionEnabled", inst.Enabled)
+		inst:GetPropertyChangedSignal("Enabled"):Connect(function()
+			inst:SetAttribute("InteractionEnabled", inst.Enabled)
+		end)
+		local parent = inst.Parent
+		local model = parent and parent:FindFirstAncestorOfClass("Model")
+		local target = Interaction.target(parent, model ~= nil and CollectionService:HasTag(model, "Arsenal"))
+		if target then
+			local link = Instance.new("ObjectValue")
+			link.Name = "InteractionTarget"
+			link.Value = target
+			link.Parent = inst
+		end
+	end
+end
+workspace.DescendantAdded:Connect(customPrompt)
+for _, inst in workspace:GetDescendants() do
+	customPrompt(inst)
+end
 
 local MedicalService = require(script.Parent.MedicalService)
 local Inventory = require(script.Parent.Inventory)
@@ -40,6 +64,10 @@ end
 
 -- Players ------------------------------------------------------------------
 local function onCharacter(player: Player, character: Model)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if humanoid and humanoid:IsA("Humanoid") and humanoid.RigType ~= Enum.HumanoidRigType.R6 then
+		warn("[Hellbound] Set Game Settings > Avatar > Avatar Type to R6 and save the place")
+	end
 	MedicalService.register(character, player)
 	Inventory.spawn(player)
 end
@@ -288,7 +316,7 @@ Remotes.get("Respawn").OnServerEvent:Connect(function(player)
 	if careerOk then
 		require(script.Parent.CareerService).recordDeath(player, player.Character)
 	end
-	require(script.Parent.CharacterLook).load(player)
+	player:LoadCharacter()
 end)
 
 print("[KATMedical] server started" .. (if weaponsOk then "" else " (weapons disabled)"))

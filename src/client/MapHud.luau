@@ -1,6 +1,6 @@
 --!nonstrict
 -- Minimap (top right), fullscreen map (M), compass (top centre) and pings. North is -Z.
--- Ping: T where you're looking, or left click on the fullscreen map; right click on the map clears yours.
+-- Ping: T at the cursor, or left click on the fullscreen map; right click on the map clears yours.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,6 +11,7 @@ local Medical = ReplicatedStorage:WaitForChild("Medical")
 local GameConfig = require(Medical.GameMode.Config)
 local Remotes = require(Medical.Remotes)
 local Ui = require(script.Parent.Ui)
+local InteractionInput = require(script.Parent.InteractionInput)
 local T = Ui.Theme
 
 local MapHud = {}
@@ -90,6 +91,11 @@ end
 
 local function bearingOf(look: Vector3): number
 	return (math.deg(math.atan2(look.X, -look.Z)) + 360) % 360
+end
+
+function MapHud.playerBearing(): number
+	local root = rootOf(player)
+	return if root then bearingOf(root.CFrame.LookVector) else 0
 end
 
 function MapHud.gridRef(pos: Vector3): string
@@ -254,7 +260,7 @@ local function draw(p, lines, x0: number, z0: number, span: number, px: number, 
 	if root then
 		local x, y = at(root.Position)
 		local m = label(p, x, y, "▲", Color3.new(1, 1, 0.3), if full then 18 else 14)
-		m.Rotation = bearingOf(workspace.CurrentCamera.CFrame.LookVector)
+		m.Rotation = MapHud.playerBearing()
 	end
 	finish(p)
 	finish(lines)
@@ -310,7 +316,7 @@ local function syncBillboards()
 			att.Parent = workspace.Terrain
 			local gui = Instance.new("BillboardGui")
 			gui.AlwaysOnTop = true
-			gui.Size = UDim2.fromOffset(120, 46)
+			gui.Size = UDim2.fromOffset(120, 72)
 			gui.LightInfluence = 0
 			gui.Adornee = att
 			gui.Parent = att
@@ -321,7 +327,9 @@ local function syncBillboards()
 				TextColor3 = PING_COLOR,
 				TextStrokeTransparency = 0.3,
 				TextXAlignment = Enum.TextXAlignment.Center,
-				Size = UDim2.new(1, 0, 0, 24),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(24, 24),
 				Parent = gui,
 			})
 			local text = Ui.label({
@@ -329,7 +337,7 @@ local function syncBillboards()
 				TextSize = 12,
 				TextStrokeTransparency = 0.3,
 				TextXAlignment = Enum.TextXAlignment.Center,
-				Position = UDim2.fromOffset(0, 24),
+				Position = UDim2.new(0, 0, 0.5, 14),
 				Size = UDim2.new(1, 0, 0, 18),
 				Parent = gui,
 			})
@@ -337,6 +345,7 @@ local function syncBillboards()
 			billboards[ping.id] = b
 		end
 		b.ping = ping
+		b.att.WorldPosition = ping.pos
 	end
 	for id, b in billboards do
 		if not seen[id] then
@@ -363,13 +372,11 @@ local function groundAt(x: number, z: number): Vector3
 	return if hit then hit.Position else Vector3.new(x, 0, z)
 end
 
-local function pingAhead()
-	local camera = workspace.CurrentCamera
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = if player.Character then { player.Character } else {}
-	local origin = camera.CFrame.Position
-	local hit = workspace:Raycast(origin, camera.CFrame.LookVector * 1500, params)
+local function pingAtCursor()
+	if Ui.isModalOpen() or UserInputService:GetFocusedTextBox() then
+		return
+	end
+	local hit = InteractionInput.cast(1500)
 	if hit then
 		pingRemote:FireServer("enemy", hit.Position)
 	end
@@ -417,6 +424,7 @@ function MapHud.init(screen: ScreenGui)
 		Visible = false,
 		Parent = screen,
 	})
+	Ui.modal(big)
 	bigCanvas = Ui.make("TextButton", {
 		Text = "",
 		AutoButtonColor = false,
@@ -504,7 +512,7 @@ function MapHud.init(screen: ScreenGui)
 		if input.KeyCode == cfg.Key and player.Character then
 			MapHud.setOpen(not mapOpen)
 		elseif input.KeyCode == cfg.PingKey and player.Character then
-			pingAhead()
+			pingAtCursor()
 		elseif input.KeyCode == Enum.KeyCode.Escape and mapOpen then
 			MapHud.setOpen(false)
 		end

@@ -175,8 +175,7 @@ local function step(dt: number)
 				pose = Animations.medical(clip, now - started)
 			else
 				pose = gunPose(character, st, dt, player == me, now)
-				local crouch = if humanoid.RigType == Enum.HumanoidRigType.R15 then st.crouch else 0
-				local move = Animations.movement(crouch, st.lean)
+				local move = Animations.movement(st.crouch, st.lean, humanoid.RigType == Enum.HumanoidRigType.R6)
 				if move then
 					if not st.motors.Waist and move.Waist then
 						move.Root = move.Waist -- R6 has no waist: lean the whole torso

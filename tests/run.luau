@@ -1,5 +1,7 @@
 -- Usage: lune run tests/run.luau
 local Harness = require("./harness")
+local ModuleHarness = require("./moduleHarness")
+local Roblox = require("@lune/roblox")
 
 local Patient = Harness.require("Sim/Patient")
 local Simulation = Harness.require("Sim/Simulation")
@@ -32,6 +34,84 @@ local function expect(cond: any, msg: string?)
 		error(msg or "expectation failed", 2)
 	end
 end
+
+test("interaction mode requires Alt and a usable, focused character", function()
+	local Interaction = Harness.require("Interaction")
+	local context = {
+		held = true,
+		focused = true,
+		modal = false,
+		typing = false,
+		hasCharacter = true,
+		alive = true,
+		conscious = true,
+	}
+	expect(Interaction.active(context))
+	for _, key in { "held", "focused", "hasCharacter", "alive", "conscious" } do
+		local changed = table.clone(context)
+		changed[key] = false
+		expect(not Interaction.active(changed), key .. " must cancel interactions")
+	end
+	for _, key in { "modal", "typing" } do
+		local changed = table.clone(context)
+		changed[key] = true
+		expect(not Interaction.active(changed), key .. " blocks world input")
+	end
+end)
+
+test("cursor rays use raw viewport coordinates without an extra top-bar offset", function()
+	local Interaction = Harness.require("Interaction")
+	local calls = {}
+	local expectedRay = { Origin = "cursor origin", Direction = "cursor direction" }
+	local camera = {
+		ViewportSize = { X = 1920, Y = 1080 },
+		CFrame = { LookVector = "centre direction" },
+		ScreenPointToRay = function()
+			error("GetMouseLocation is already viewport-relative; screen conversion would offset the ping")
+		end,
+		ViewportPointToRay = function(_, x, y)
+			table.insert(calls, { x, y })
+			return expectedRay
+		end,
+	}
+	expect(Interaction.cursorRay(camera, { X = 1417, Y = 283 }) == expectedRay)
+	expect(calls[1][1] == 1417 and calls[1][2] == 283, "off-centre cursor preserved without adding GUI inset")
+	expect(Interaction.cursorRay(camera, { X = 72, Y = 811 }) == expectedRay)
+	expect(calls[2][1] == 72 and calls[2][2] == 811, "a different cursor changes the ray")
+	expect(Interaction.cursorRay(nil, { X = 0, Y = 0 }) == nil, "camera replacement is safe")
+end)
+
+test("interaction targets group actors and vehicles but not neighbouring base objects", function()
+	local Interaction = Harness.require("Interaction")
+	local Instance = require("@lune/roblox").Instance
+	local base = Instance.new("Model")
+	local first = Instance.new("Part")
+	first.Parent = base
+	local second = Instance.new("Part")
+	second.Parent = base
+	expect(Interaction.target(first, false) == first, "deployment posts stay separate")
+	expect(Interaction.target(second, false) == second)
+	local vehicle = Instance.new("Model")
+	local hull = Instance.new("Part")
+	hull.Parent = vehicle
+	vehicle.PrimaryPart = hull
+	expect(Interaction.target(hull, false) == vehicle, "vehicle seat and cargo share a target")
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = hull
+	expect(Interaction.target(attachment, false) == vehicle)
+	local actor = Instance.new("Model")
+	local humanoid = Instance.new("Humanoid")
+	humanoid.Parent = actor
+	local root = Instance.new("Part")
+	root.Parent = actor
+	expect(Interaction.target(root, false) == actor, "all body parts select the patient")
+	expect(Interaction.target(first, true) == base, "arsenal shelves share their tagged model")
+	expect(Interaction.target(vehicle, false) == vehicle)
+	expect(Interaction.target(nil, false) == nil)
+	base:Destroy()
+	vehicle:Destroy()
+	actor:Destroy()
+end)
 
 local function run(p, seconds: number, each: ((number) -> boolean?)?)
 	for t = 1, seconds do
@@ -662,14 +742,92 @@ test("gear: weights, containers and kits", function()
 	expect(not Gear.canSprint(GearConfig.NoSprintMass + 1), "too heavy to sprint")
 	expect(Gear.def("Saline500").mass == 0.5 and Gear.def("FieldDressing").kind == "medical", "medical weights")
 	for class, kit in GearConfig.Kits do
-		local level = if class == "Medic" then 1 else 0
-		local st, missing = Gear.fromKit(kit, Config.Loadouts[level])
+		local st, missing = Gear.fromKit(kit, Config.Loadouts[GearConfig.SpawnMedicalLoadoutLevel])
 		expect(next(missing) == nil, class .. " kit doesn't fit: " .. tostring(next(missing)))
+		expect(st.slots.vest == nil and st.slots.backpack == nil, class .. " must spawn without a vest or backpack")
+		expect(
+			Gear.capacity(st, "vest") == 0 and Gear.capacity(st, "backpack") == 0,
+			"unequipped containers have no capacity"
+		)
+		expect(Gear.load(st, "uniform") <= Gear.capacity(st, "uniform"), "starter supplies fit the uniform")
+		expect(Gear.count(st, "Radio") == 1 and Gear.count(st, "Hammer") == 1, "basic equipment is retained")
 		local mass = Gear.mass(st)
 		print(("    %s kit %.1f kg"):format(class, mass))
 		expect(Gear.canSprint(mass) and Gear.speed(mass) >= 0.9, class .. " kit too heavy")
 		expect(Gear.def(st.slots.primary).weaponId ~= nil, "primary weapon")
 	end
+end)
+
+test("personal inventory opens without a locker but respects character and UI state", function()
+	local Gear = Harness.require("Gear/Gear")
+	local ctx =
+		{ hasCharacter = true, alive = true, conscious = true, typing = false, modal = false, alreadyOpen = false }
+	expect(Gear.canOpen(ctx), "no source or locker is required")
+	for _, field in { "hasCharacter", "alive", "conscious" } do
+		local blocked = table.clone(ctx)
+		blocked[field] = false
+		expect(not Gear.canOpen(blocked), field .. " gate")
+	end
+	ctx.typing = true
+	expect(not Gear.canOpen(ctx), "typing must not open inventory")
+	ctx.typing = false
+	ctx.modal = true
+	expect(not Gear.canOpen(ctx), "don't stack inventory onto another modal")
+	ctx.alreadyOpen = true
+	expect(Gear.canOpen(ctx), "refreshing an existing inventory is allowed")
+end)
+
+test("hotbar weapon slots stay stable across equip, respawn and acquisition order", function()
+	local Hotbar = Harness.require("Weapons/Hotbar")
+	local primary = { weaponId = "M4A1", name = "Rifle", tool = "rifle" }
+	local sidearm = { weaponId = "G17", name = "Pistol", tool = "pistol" }
+	local first = Hotbar.layout({ sidearm, primary })
+	local second = Hotbar.layout({ primary, sidearm })
+	expect(first[1] == primary and first[2] == sidearm and first[3] == nil)
+	expect(second[1] == first[1] and second[2] == first[2], "Backpack versus Character order cannot swap keys")
+	local pistolOnly = Hotbar.layout({ sidearm })
+	expect(pistolOnly[1] == nil and pistolOnly[2] == sidearm, "dropping the rifle doesn't change the pistol key")
+	local replacement = { weaponId = "M870", name = "Shotgun", tool = "replacement" }
+	expect(Hotbar.layout({ replacement, sidearm })[1] == replacement, "primary replacements use slot 1")
+	expect(next(Hotbar.layout({})) == nil, "no stale tools after death")
+	expect(#Hotbar.Keys == 9 and Hotbar.Keys[1] == "One" and Hotbar.Keys[9] == "Nine")
+end)
+
+test("hotbar extras are deterministic and never overwrite the weapon slots", function()
+	local Hotbar = Harness.require("Weapons/Hotbar")
+	local a = { name = "Hammer", itemId = "Hammer" }
+	local b = { name = "Radio", itemId = "Radio" }
+	local slots = Hotbar.layout({ b, a })
+	expect(slots[1] == nil and slots[2] == nil and slots[3] == nil)
+	expect(slots[4] == a and slots[5] == b)
+	expect(Hotbar.layout({ b })[5] == b, "dropping the hammer never moves the radio key")
+	local many = {}
+	for i = 1, 12 do
+		table.insert(many, { name = string.format("Tool %02d", i) })
+	end
+	local full = Hotbar.layout(many)
+	expect(full[9] ~= nil and full[10] == nil, "extras obey the nine-slot limit")
+end)
+
+test("driver stance blocks vehicle seats and tagged driver seats but not passengers", function()
+	local Stance = Harness.require("Weapons/Stance")
+	local function hum(kind, role)
+		return {
+			SeatPart = {
+				IsA = function(_, name)
+					return name == kind
+				end,
+				GetAttribute = function(_, name)
+					return if name == "Role" then role else nil
+				end,
+			},
+		}
+	end
+	expect(Stance.isDriving(hum("VehicleSeat", nil)), "native driver seat")
+	expect(Stance.isDriving(hum("Seat", "driver")), "tagged custom driver seat")
+	expect(not Stance.isDriving(hum("Seat", "passenger")))
+	expect(not Stance.isDriving(hum("Seat", "gunner")))
+	expect(not Stance.isDriving({}) and not Stance.isDriving(nil), "on foot / no character")
 end)
 
 test("chat: local range and radio channels", function()
@@ -794,6 +952,508 @@ test("logistics: placement rules and supplies", function()
 	expect(not Logistics.canPlace("Sandbags", { cost = 20 }, ctx({ blocked = true }), cfg), "blocked")
 	expect(Logistics.transfer(math.huge, 200, 1000) == 800, "load a truck to capacity")
 	expect(Logistics.transfer(1000, 2500, 3000) == 500, "FOB stock cap")
+end)
+
+local Cargo = Harness.require("Logistics/Cargo")
+
+test("R6 hit zones and crouch use the real six-part rig", function()
+	local BodyParts = Harness.require("BodyParts")
+	local Animations = Harness.require("Animations")
+	for name, part in
+		{
+			Head = "Head",
+			Torso = "Torso",
+			["Left Arm"] = "LeftArm",
+			["Right Arm"] = "RightArm",
+			["Left Leg"] = "LeftLeg",
+			["Right Leg"] = "RightLeg",
+		}
+	do
+		expect(BodyParts.fromInstanceName(name) == part)
+	end
+	local pose = Animations.movement(1, 0.5, true)
+	expect(pose ~= nil and pose.Root ~= nil and pose.Root[1] > 0, "R6 bends at the root")
+	expect(pose.RightHip ~= nil and pose.LeftHip ~= nil, "R6 hips")
+	expect(pose.Waist == nil and pose.RightKnee == nil and pose.LeftKnee == nil, "no R15-only joints")
+	expect(Animations.movement(0, 0, true) == nil, "standing has no override")
+end)
+
+test("cargo access requires a conscious living teammate within vehicle range", function()
+	local good = { side = "A", vehicleSide = "A", alive = true, conscious = true, distance = 12, range = 19 }
+	expect(Cargo.canAccess(good))
+	for key, value in { side = "B", vehicleSide = "B", alive = false, conscious = false, distance = 20 } do
+		local ctx = table.clone(good)
+		ctx[key] = value
+		expect(not Cargo.canAccess(ctx), key .. " should deny cargo access")
+	end
+	for _, distance in { -1, math.huge, 0 / 0 } do
+		local ctx = table.clone(good)
+		ctx.distance = distance
+		expect(not Cargo.canAccess(ctx), "invalid distance")
+	end
+	local lobby = table.clone(good)
+	lobby.side, lobby.vehicleSide = nil, nil
+	expect(not Cargo.canAccess(lobby), "lobby is not a logistics side")
+end)
+
+test("cargo loading and returning to main keeps unlimited source stock unchanged", function()
+	local state = { cargo = 200, capacity = 1000, stock = 0, stockCapacity = 3000, unlimited = true }
+	local cargo, stock, moved, why = Cargo.move(state, true, 100)
+	expect(cargo == 300 and stock == 0 and moved == 100 and why == nil)
+	cargo, stock, moved = Cargo.move(state, true, "all")
+	expect(cargo == 1000 and stock == 0 and moved == 800, "load only available space")
+	cargo, stock, moved = Cargo.move(state, false, "all")
+	expect(cargo == 0 and stock == 0 and moved == 200, "return cargo to main")
+end)
+
+test("cargo FOB transfers conserve supplies in both directions", function()
+	local state = { cargo = 250, capacity = 1000, stock = 600, stockCapacity = 3000, unlimited = false }
+	local cargo, stock, moved = Cargo.move(state, true, "all")
+	expect(cargo == 850 and stock == 0 and moved == 600, "cannot load nonexistent supplies")
+	state = { cargo = 1000, capacity = 1000, stock = 2750, stockCapacity = 3000, unlimited = false }
+	cargo, stock, moved = Cargo.move(state, false, "all")
+	expect(cargo == 750 and stock == 3000 and moved == 250, "cannot overflow a FOB")
+	state.cargo, state.stock = cargo, stock
+	cargo, stock, moved = Cargo.move(state, true, 100)
+	expect(cargo == 850 and stock == 2900 and moved == 100, "reload a partial quantity")
+	expect(cargo + stock == state.cargo + state.stock, "supplies conserved")
+end)
+
+test("cargo rejects noninteger, negative, infinite and malformed quantities without mutation", function()
+	local state = { cargo = 250, capacity = 1000, stock = 600, stockCapacity = 3000, unlimited = false }
+	for _, amount in { 0, -50, 1.5, math.huge, -math.huge, 0 / 0, "100", "", {}, true } do
+		local cargo, stock, moved, why = Cargo.move(state, true, amount)
+		expect(cargo == 250 and stock == 600 and moved == 0 and why ~= nil, "invalid quantity")
+	end
+	local cargo, stock, moved, why = Cargo.move(state, true, nil)
+	expect(cargo == 250 and stock == 600 and moved == 0 and why ~= nil, "missing quantity")
+end)
+
+test("cargo empty and full destinations never duplicate or discard supplies", function()
+	for _, loading in { true, false } do
+		local state = {
+			cargo = if loading then 1000 else 0,
+			capacity = 1000,
+			stock = 3000,
+			stockCapacity = 3000,
+			unlimited = false,
+		}
+		local cargo, stock, moved, why = Cargo.move(state, loading, "all")
+		expect(cargo == state.cargo and stock == state.stock and moved == 0 and why ~= nil)
+	end
+	-- Repeated concurrent requests are serialized by the server; each uses the latest balances.
+	local state = { cargo = 950, capacity = 1000, stock = 100, stockCapacity = 3000, unlimited = false }
+	local cargo, stock, moved = Cargo.move(state, true, 100)
+	expect(moved == 50)
+	state.cargo, state.stock = cargo, stock
+	cargo, stock, moved = Cargo.move(state, true, 100)
+	expect(moved == 0 and cargo == 1000 and stock == 50)
+end)
+
+local function uiFixture()
+	local game = ModuleHarness.node("DataModel")
+	local workspace = ModuleHarness.node("Workspace")
+	local services = {}
+	for _, name in
+		{
+			"Players",
+			"UserInputService",
+			"RunService",
+			"ContextActionService",
+			"GuiService",
+			"ReplicatedStorage",
+			"TweenService",
+			"CollectionService",
+		}
+	do
+		services[name] = ModuleHarness.node(name)
+	end
+	game.GetService = function(_, name)
+		return assert(services[name], name)
+	end
+	local player = ModuleHarness.node("Player")
+	player.Character = ModuleHarness.node("Model")
+	player.Character.Parent = workspace
+	ModuleHarness.node("Humanoid").Parent = player.Character
+	local root = ModuleHarness.node("Part")
+	root.Name, root.Parent = "HumanoidRootPart", player.Character
+	services.Players.LocalPlayer = player
+	local input = services.UserInputService
+	input.GetFocusedTextBox = function()
+		return input.Focus
+	end
+	input.IsKeyDown = function()
+		return false
+	end
+	input.GetMouseLocation = function()
+		return input.MouseLocation or Roblox.Vector2.zero
+	end
+	local bindings = {}
+	services.ContextActionService.BindActionAtPriority = function(_, name, fn)
+		bindings[name] = fn
+	end
+	services.GuiService.MenuIsOpen = false
+	local medical = {
+		Gear = { Gear = "gear", Config = "gearConfig", Drag = "drag" },
+		Remotes = "remotes",
+		GameMode = { Config = "gameConfig" },
+	}
+	medical.WaitForChild = function(self, name)
+		return self[name]
+	end
+	services.ReplicatedStorage.WaitForChild = function()
+		return medical
+	end
+	services.ReplicatedStorage.Medical = medical
+	local requests, gearState = {}, ModuleHarness.signal()
+	local mods = {
+		gear = Harness.require("Gear/Gear"),
+		gearConfig = Harness.require("Gear/Config"),
+		drag = Harness.require("Gear/Drag"),
+		gameConfig = ModuleHarness.load("shared/Medical/GameMode/Config", {}),
+		movement = {
+			stamina = function()
+				return 1, false
+			end,
+		},
+		interactionInput = {},
+		remotes = {
+			get = function(name)
+				return if name == "GearState"
+					then { OnClientEvent = gearState }
+					else {
+						FireServer = function(_, ...)
+							table.insert(requests, table.pack(...))
+						end,
+					}
+			end,
+		},
+	}
+	local env = {
+		game = game,
+		workspace = workspace,
+		script = {
+			Parent = {
+				Ui = "ui",
+				InventoryInput = "input",
+				InventoryDrag = "inventoryDrag",
+				InteractionInput = "interactionInput",
+				Weapons = { Movement = "movement" },
+			},
+		},
+		require = function(key)
+			return assert(mods[key], tostring(key))
+		end,
+		task = {
+			spawn = function() end,
+			defer = function(fn, ...)
+				fn(...)
+			end,
+		},
+	}
+	mods.ui = ModuleHarness.load("client/Ui", env)
+	mods.input = ModuleHarness.load("client/InventoryInput", env)
+	mods.inventoryDrag = ModuleHarness.load("client/InventoryDrag", env)
+	local screen = ModuleHarness.node("ScreenGui")
+	screen.Parent = game
+	return {
+		env = env,
+		mods = mods,
+		game = game,
+		workspace = workspace,
+		player = player,
+		services = services,
+		screen = screen,
+		requests = requests,
+		gearState = gearState,
+		bindings = bindings,
+		root = root,
+	}
+end
+
+test("inventory initializes and I toggles once even when Roblox processes the key", function()
+	local f = uiFixture()
+	local inventory = ModuleHarness.load("client/InventoryUi", f.env)
+	inventory.init(f.screen)
+	local key = { KeyCode = Roblox.Enum.KeyCode.I }
+	expect(
+		f.bindings.HellboundInventory("HellboundInventory", Roblox.Enum.UserInputState.Begin, key)
+			== Roblox.Enum.ContextActionResult.Sink
+	)
+	expect(not inventory.isOpen(), "CAS consumes camera zoom but doesn't toggle a second time")
+	f.services.UserInputService.InputBegan:Fire(key, true)
+	expect(inventory.isOpen(), "processed I still opens field inventory with no locker or source")
+	expect(f.requests[1][1] == "open")
+	f.gearState:Fire(Harness.require("Gear/Gear").new(), { kind = "ground", items = {} }, false)
+	f.services.UserInputService.InputBegan:Fire(key, true)
+	expect(not inventory.isOpen())
+	f.services.UserInputService.Focus = {}
+	f.services.UserInputService.InputBegan:Fire(key, false)
+	expect(not inventory.isOpen(), "typing blocks inventory")
+	f.services.UserInputService.Focus = nil
+	f.services.GuiService.MenuIsOpen = true
+	f.services.UserInputService.InputBegan:Fire(key, true)
+	expect(not inventory.isOpen(), "Roblox menu blocks inventory")
+	f.services.GuiService.MenuIsOpen = false
+	f.player.Character:SetAttribute("MedConscious", false)
+	f.services.UserInputService.InputBegan:Fire(key, true)
+	expect(not inventory.isOpen(), "unconsciousness blocks opening")
+end)
+
+test("modal detection respects hidden ancestors and disabled screens", function()
+	local f = uiFixture()
+	local parent = ModuleHarness.node("Frame")
+	parent.Parent, parent.Visible = f.screen, false
+	local modal = ModuleHarness.node("Frame")
+	modal.Parent = parent
+	f.mods.ui.modal(modal)
+	expect(not f.mods.ui.isModalOpen(), "hidden parent doesn't block inventory")
+	parent.Visible = true
+	expect(f.mods.ui.isModalOpen())
+	f.screen.Enabled = false
+	expect(not f.mods.ui.isModalOpen())
+	f.screen.Enabled = true
+	modal:Destroy()
+	expect(not f.mods.ui.isModalOpen())
+end)
+
+test("map player bearing uses the model, independently of camera rotation", function()
+	local f = uiFixture()
+	local map = ModuleHarness.load("client/MapHud", f.env)
+	f.workspace.CurrentCamera = { CFrame = Roblox.CFrame.Angles(0, math.pi, 0) }
+	expect(math.abs(map.playerBearing()) < 0.001, "player faces north despite south-facing camera")
+	f.root.CFrame = Roblox.CFrame.Angles(0, -math.pi / 2, 0)
+	expect(math.abs(map.playerBearing() - 90) < 0.001, "player now faces east")
+	f.workspace.CurrentCamera.CFrame = Roblox.CFrame.new()
+	expect(math.abs(map.playerBearing() - 90) < 0.001, "camera movement doesn't move the arrow")
+	f.player.Character = nil
+	expect(map.playerBearing() == 0)
+end)
+
+test("held equipment synchronization preserves ownership and removes lost items", function()
+	local f = uiFixture()
+	local Gear = f.mods.gear
+	local state = Gear.fromKit(f.mods.gearConfig.Kits.Rifleman, {})
+	local tools = ModuleHarness.load("server/Gear/GearTools", f.env)
+	local usable = true
+	tools.init({
+		get = function()
+			return state
+		end,
+		canUse = function()
+			return usable
+		end,
+	})
+	local backpack = ModuleHarness.node("Backpack")
+	backpack.Parent = f.player
+	local hum = f.player.Character:FindFirstChildOfClass("Humanoid")
+	hum.UnequipTools = function()
+		for _, tool in f.player.Character:GetChildren() do
+			if tool:IsA("Tool") then
+				tool.Parent = backpack
+				tool.Unequipped:Fire()
+			end
+		end
+	end
+	hum.EquipTool = function(_, tool)
+		hum:UnequipTools()
+		tool.Parent = f.player.Character
+		tool.Equipped:Fire()
+	end
+	tools.sync(f.player, state)
+	tools.sync(f.player, state)
+	expect(#backpack:GetChildren() == 2, "one held proxy per owned equipment type")
+	tools.equip(f.player, "Hammer")
+	expect(
+		tools.held(f.player, "Hammer") and Gear.count(state, "Hammer") == 1,
+		"equipping never consumes or duplicates the item"
+	)
+	expect(f.player.Character:GetAttribute("GearHeldItem") == "Hammer")
+	tools.equip(f.player, "Hammer")
+	expect(not tools.held(f.player, "Hammer"), "selecting again holsters")
+	usable = false
+	hum:EquipTool(backpack:GetChildren()[1])
+	expect(
+		#backpack:GetChildren() == 2 and not tools.held(f.player, "Hammer"),
+		"server rejects native equip while incapacitated"
+	)
+	usable = true
+	Gear.remove(state, "Hammer", 1)
+	tools.sync(f.player, state)
+	expect(#backpack:GetChildren() == 1)
+	tools.equip(f.player, "Hammer")
+	expect(not tools.held(f.player, "Hammer"), "cannot grant missing equipment")
+	tools.equip(f.player, "Radio")
+	expect(tools.held(f.player, "Radio") and Gear.count(state, "Radio") == 1)
+	Gear.remove(state, "Radio", 1)
+	tools.sync(f.player, state)
+	expect(
+		#backpack:GetChildren() == 0 and not tools.held(f.player, "Radio"),
+		"dropping last radio destroys held proxy"
+	)
+	expect(f.player.Character:GetAttribute("GearHeldItem") == nil)
+end)
+
+test("drag requests route stacks, equipment and matching worn slots without mutating state", function()
+	local Gear, Drag = Harness.require("Gear/Gear"), Harness.require("Gear/Drag")
+	local state = Gear.new()
+	Gear.wear(state, "Uniform")
+	Gear.wear(state, "AssaultPack")
+	Gear.add(state, "Radio", 2, "uniform")
+	local origin = { kind = "contents", id = "Radio", count = 2, container = "uniform" }
+	local move = Drag.request(origin, { kind = "container", name = "backpack" }, state)
+	expect(move[1] == "move" and move[3] == 2 and move[4] == "uniform" and move[5] == "backpack")
+	expect(
+		Gear.count(state, "Radio") == 2 and state.items.backpack.Radio == nil,
+		"requests are not optimistic mutations"
+	)
+	Gear.move(state, move[2], move[3], move[4], move[5])
+	expect(
+		Gear.count(state, "Radio") == 2 and state.items.backpack.Radio == 2,
+		"server-equivalent move conserves stacks"
+	)
+	expect(Drag.request(origin, { kind = "equip" }, state) == nil, "stale origin cannot equip absent items")
+	origin.container = "backpack"
+	expect(Drag.request(origin, { kind = "equip" }, state)[1] == "equip")
+	expect(Drag.request(origin, { kind = "source" }, state)[1] == "drop")
+	local source = { kind = "arsenal", items = { "M4A1", "FieldPack", "Radio" }, instance = "locker" }
+	local external = { kind = "source", id = "FieldPack", count = 1, source = "locker" }
+	expect(
+		Drag.request(external, { kind = "container", name = "backpack" }, state, source)[1] == "take",
+		"worn backpack can be replaced"
+	)
+	external.id = "M4A1"
+	expect(Drag.request(external, { kind = "slot", name = "handgun" }, state, source) == nil)
+	local take = Drag.request(external, { kind = "slot", name = "primary" }, state, source)
+	expect(take[1] == "take" and take[5] == "locker", "source identity accompanies validated slot takes")
+	external.id = "Radio"
+	expect(Drag.request(external, { kind = "equip" }, state, source)[1] == "takeEquip")
+	expect(Drag.request({ kind = "slot", id = "Uniform", slot = "uniform" }, { kind = "source" }, state)[1] == "unwear")
+end)
+
+test("drag controller highlights targets, sends once and cancels mouse/touch safely", function()
+	local f = uiFixture()
+	local Gear = f.mods.gear
+	local state = Gear.new()
+	Gear.wear(state, "Uniform")
+	Gear.wear(state, "AssaultPack")
+	Gear.add(state, "Radio", 2, "uniform")
+	local renders = 0
+	local drag = f.mods.inventoryDrag.new(f.screen, {
+		isOpen = function()
+			return true
+		end,
+		state = function()
+			return state
+		end,
+		source = function()
+			return { kind = "ground", items = {} }
+		end,
+		send = function(...)
+			table.insert(f.requests, table.pack(...))
+		end,
+		render = function()
+			renders += 1
+		end,
+	})
+	local row = ModuleHarness.node("TextButton")
+	row.Parent = f.screen
+	drag:origin(row, function()
+		return { kind = "contents", container = "uniform", id = "Radio", count = 2 }
+	end)
+	local target = ModuleHarness.node("Frame")
+	target.Parent = f.screen
+	target.AbsolutePosition, target.AbsoluteSize = Roblox.Vector2.new(100, 0), Roblox.Vector2.new(100, 100)
+	drag:target(target, function()
+		return { kind = "container", name = "backpack" }
+	end)
+	local input = f.services.UserInputService
+	local mouse = { UserInputType = Roblox.Enum.UserInputType.MouseButton1 }
+	input.MouseLocation = Roblox.Vector2.new(20, 20)
+	row.InputBegan:Fire(mouse)
+	expect(drag:busy() and drag:clicked(), "pending press still allows ordinary clicks")
+	input.MouseLocation = Roblox.Vector2.new(120, 20)
+	input.InputChanged:Fire({ UserInputType = Roblox.Enum.UserInputType.MouseMovement })
+	expect(not drag:clicked() and target:FindFirstChild("DropTarget").Visible)
+	input.InputEnded:Fire(mouse)
+	expect(#f.requests == 1 and f.requests[1][1] == "move" and f.requests[1][3] == 2)
+	expect(not drag:busy() and not drag:clicked(), "release suppresses the old row's Activated drop")
+	expect(not target:FindFirstChild("DropTarget").Visible and renders == 1)
+	expect(Gear.count(state, "Radio") == 2 and state.items.backpack.Radio == nil)
+	input.InputEnded:Fire(mouse)
+	expect(#f.requests == 1, "duplicate release cannot send twice")
+	input.MouseLocation = Roblox.Vector2.new(20, 20)
+	row.InputBegan:Fire(mouse)
+	input.MouseLocation = Roblox.Vector2.new(500, 500)
+	input.InputChanged:Fire({ UserInputType = Roblox.Enum.UserInputType.MouseMovement })
+	input.InputEnded:Fire(mouse)
+	expect(#f.requests == 1, "outside drop cancels")
+	local touch = { UserInputType = Roblox.Enum.UserInputType.Touch, Position = Roblox.Vector3.new(20, 20, 0) }
+	row.InputBegan:Fire(touch)
+	touch.Position = Roblox.Vector3.new(120, 20, 0)
+	input.InputChanged:Fire(touch)
+	input.InputEnded:Fire(mouse)
+	expect(drag:busy(), "mouse release cannot finish another finger's drag")
+	input.InputEnded:Fire(touch)
+	expect(#f.requests == 2 and not drag:busy())
+	input.MouseLocation = Roblox.Vector2.new(20, 20)
+	row.InputBegan:Fire(mouse)
+	input.MouseLocation = Roblox.Vector2.new(120, 20)
+	input.InputChanged:Fire({ UserInputType = Roblox.Enum.UserInputType.MouseMovement })
+	input.WindowFocusReleased:Fire()
+	input.InputEnded:Fire(mouse)
+	expect(not drag:busy() and #f.requests == 2, "focus loss never transfers")
+	row.InputBegan:Fire(mouse)
+	input.InputBegan:Fire({ UserInputType = Roblox.Enum.UserInputType.MouseButton2 })
+	input.InputEnded:Fire(mouse)
+	expect(not drag:busy() and #f.requests == 2, "right click cancels without a bulk drop")
+end)
+
+test("inventory drag capacity clamps quantities without item loss", function()
+	local Gear, Drag = Harness.require("Gear/Gear"), Harness.require("Gear/Drag")
+	local state = Gear.new()
+	Gear.wear(state, "Uniform")
+	Gear.wear(state, "AssaultPack")
+	Gear.add(state, "Hammer", 4, "uniform")
+	Gear.add(state, "Hammer", 13, "backpack")
+	local origin = { kind = "contents", id = "Hammer", container = "uniform", count = 4 }
+	local request = Drag.request(origin, { kind = "container", name = "backpack" }, state)
+	expect(request[3] == 1, "only remaining capacity is requested")
+	Gear.move(state, request[2], request[3], request[4], request[5])
+	expect(Gear.count(state, "Hammer") == 17 and state.items.uniform.Hammer == 3)
+	expect(
+		Drag.request(origin, { kind = "container", name = "backpack" }, state) == nil,
+		"full destination rejects remainder"
+	)
+	expect(Gear.equipment(state).Hammer and not Gear.equipment(state).Radio, "equipment follows real ownership")
+end)
+
+test("invalid, full, stale and outside inventory drops are harmless", function()
+	local Gear, Drag = Harness.require("Gear/Gear"), Harness.require("Gear/Drag")
+	local state = Gear.new()
+	Gear.wear(state, "Uniform")
+	Gear.add(state, "Hammer", 1, "uniform")
+	local origin = { kind = "contents", id = "Hammer", count = 1, container = "uniform" }
+	expect(Drag.request(origin, nil, state) == nil)
+	expect(Drag.request(origin, { kind = "container", name = "vest" }, state) == nil)
+	expect(Drag.request(origin, { kind = "container", name = "uniform" }, state) == nil)
+	for _, count in { 0, -1, math.huge, 0 / 0, 0.5, "1" } do
+		origin.count = count
+		expect(Drag.request(origin, { kind = "source" }, state) == nil)
+	end
+	local source = { kind = "ground", items = { Hammer = 1 }, instance = "newPile" }
+	expect(
+		Drag.request(
+			{ kind = "source", id = "Hammer", count = 1, source = "oldPile" },
+			{ kind = "container", name = "uniform" },
+			state,
+			source
+		) == nil
+	)
+	expect(Drag.request({ kind = "slot", id = "PlateCarrier", slot = "vest" }, { kind = "source" }, state) == nil)
+	expect(Gear.count(state, "Hammer") == 1, "invalid drops do not discard or duplicate gear")
+	expect(not Drag.started({ X = 0, Y = 0 }, { X = 3, Y = 3 }), "click isn't a drag")
+	expect(Drag.started({ X = 0, Y = 0 }, { X = 8, Y = 0 }))
 end)
 
 print(("\n%d passed, %d failed"):format(passed, failed))

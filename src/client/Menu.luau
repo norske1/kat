@@ -204,24 +204,16 @@ function Menu.init(screen: ScreenGui)
 	window = Ui.make("Frame", {
 		Name = "MedicalMenu",
 		Size = UDim2.new(0, 960, 0, 600),
-		Position = UDim2.new(0.5, -480, 0.5, -300),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
 		BackgroundColor3 = T.Background,
 		BackgroundTransparency = 0.03,
 		Visible = false,
 		ZIndex = 10,
 		Parent = screen,
 	}, { Ui.corner(10) })
-	Ui.make("UISizeConstraint", { MaxSize = Vector2.new(960, 600), Parent = window })
-	local scale = Ui.make("UIScale", { Parent = window })
-	local function rescale()
-		local cam = workspace.CurrentCamera
-		if cam then
-			local vp = cam.ViewportSize
-			scale.Scale = math.min(1, (vp.X - 20) / 960, (vp.Y - 20) / 600)
-		end
-	end
-	rescale()
-	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	Ui.window(window, 960, 600)
+	Ui.modal(window)
 
 	modalButton = Ui.make("TextButton", {
 		Text = "",

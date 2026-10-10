@@ -11,6 +11,7 @@ local Remotes = require(Medical.Remotes)
 local Menu = require(script.Parent.Menu)
 local Hud = require(script.Parent.Hud)
 local Effects = require(script.Parent.Effects)
+local InteractionInput = require(script.Parent.InteractionInput)
 
 local player = Players.LocalPlayer
 
@@ -37,6 +38,9 @@ end
 optional("main menu", function()
 	require(script.Parent.MainMenu).init()
 end)
+optional("interactions", function()
+	require(script.Parent.InteractionUi).init()
+end)
 optional("animations", function()
 	require(script.Parent.Animator).init()
 end)
@@ -52,6 +56,9 @@ end)
 optional("vehicles", function()
 	require(script.Parent.VehicleClient).init(screen)
 end)
+optional("vehicle cargo", function()
+	require(script.Parent.VehicleCargoUi).init()
+end)
 optional("map", function()
 	require(script.Parent.MapHud).init(screen)
 end)
@@ -64,6 +71,9 @@ local GunClient = optional("weapons", function()
 	local module = require(script.Parent.Weapons.GunClient)
 	module.init(screen)
 	return module
+end)
+optional("hotbar", function()
+	require(script.Parent.HotbarUi).init(screen, InventoryUi)
 end)
 
 if Config.HideDefaultHealthBar then
@@ -112,7 +122,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 	elseif key == Enum.KeyCode.X then
 		Remotes.get("CancelAction"):FireServer()
-	elseif key == Config.DropCarryKey then
+	elseif key == Config.DropCarryKey and InteractionInput.isActive() then
 		Remotes.get("DropCarry"):FireServer()
 	elseif key == Enum.KeyCode.I and not InventoryUi then
 		Hud.toggleBag()

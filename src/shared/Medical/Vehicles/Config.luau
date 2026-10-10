@@ -28,7 +28,7 @@ export type VehicleDef = {
 	color: Color3,
 	passengers: number,
 	turret: Turret?,
-	supplies: number, -- logistics capacity (0 = can't carry supplies)
+	supplies: number, -- logistics capacity
 	order: number,
 }
 
@@ -48,7 +48,7 @@ VehicleConfig.Types = {
 		color = Color3.fromRGB(110, 115, 85),
 		passengers = 4,
 		turret = { damage = 30, rpm = 500, range = 900, antiArmor = 1, spread = 0.6 },
-		supplies = 0,
+		supplies = 150,
 		order = 1,
 	},
 	Truck = {
@@ -83,7 +83,7 @@ VehicleConfig.Types = {
 		color = Color3.fromRGB(90, 100, 80),
 		passengers = 8,
 		turret = { damage = 40, rpm = 450, range = 1000, antiArmor = 1.5, spread = 0.5 },
-		supplies = 0,
+		supplies = 300,
 		order = 3,
 	},
 	IFV = {
@@ -101,7 +101,7 @@ VehicleConfig.Types = {
 		color = Color3.fromRGB(80, 92, 70),
 		passengers = 6,
 		turret = { damage = 150, rpm = 150, range = 1200, antiArmor = 2, spread = 0.3 },
-		supplies = 0,
+		supplies = 200,
 		order = 4,
 	},
 	Helicopter = {
@@ -119,7 +119,7 @@ VehicleConfig.Types = {
 		size = Vector3.new(7, 6, 18),
 		color = Color3.fromRGB(70, 80, 65),
 		passengers = 6,
-		supplies = 0,
+		supplies = 600,
 		order = 5,
 	},
 } :: { [string]: VehicleDef }

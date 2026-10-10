@@ -197,6 +197,7 @@ local function build(typeId: string, def: VehicleConfig.VehicleDef, cf: CFrame):
 		p.Color = DARK
 		p.TopSurface = Enum.SurfaceType.Smooth
 		p.Massless = true
+		p.CanTouch = false
 		p.CFrame = hull.CFrame * CFrame.new(offset)
 		if vehicleSeat then
 			local vs = p :: VehicleSeat
@@ -335,6 +336,14 @@ local function enter(player: Player, rec: Record)
 		return
 	end
 	if MedicalService.isIncapacitated(player) then
+		return
+	end
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if
+		not root
+		or not root:IsA("BasePart")
+		or (root.Position - rec.hull.Position).Magnitude > rec.def.size.Z / 2 + 6
+	then
 		return
 	end
 	-- first free seat after the current one (driver, gunner, then passengers)
@@ -533,7 +542,14 @@ local function setupPad(pad: BasePart)
 		prompt.RequiresLineOfSight = false
 		prompt.Parent = post
 		prompt.Triggered:Connect(function(player)
-			spawnVehicle(player, pad, id)
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if
+				root
+				and root:IsA("BasePart")
+				and (root.Position - post.Position).Magnitude <= prompt.MaxActivationDistance
+			then
+				spawnVehicle(player, pad, id)
+			end
 		end)
 		local gui = Instance.new("BillboardGui")
 		gui.Size = UDim2.fromOffset(170, 40)

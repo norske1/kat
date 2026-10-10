@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Config = require(Medical.Logistics.Config)
 local Logistics = require(Medical.Logistics.Logistics)
+local Cargo = require(Medical.Logistics.Cargo)
 local Remotes = require(Medical.Remotes)
 local MedicalService = require(script.Parent.Parent.MedicalService)
 local GearService = require(script.Parent.Parent.Gear.GearService)
@@ -19,6 +20,9 @@ local fobs: { Fob } = {}
 local folder: Folder
 local nextId = 0
 local lastRequest: { [Player]: number } = {}
+local cargoVehicles: { [Model]: number } = {}
+local cargoSessions: { [Player]: Model } = {}
+local cargoRequests: { [Player]: number } = {}
 
 local function sideOf(player: Player): string?
 	return if player.Team then player.Team:GetAttribute("Side") :: string? else nil
@@ -162,8 +166,8 @@ local function hammerHit(player: Player, s)
 	if s.done or s.removed or sideOf(player) ~= s.side or MedicalService.isIncapacitated(player) then
 		return
 	end
-	if GearService.count(player, "Hammer") <= 0 then
-		notify(player, "You need a Hammer in your inventory to build")
+	if not GearService.isEquipped(player, "Hammer") then
+		notify(player, "Equip your Hammer to build")
 		return
 	end
 	s.points += 1
@@ -178,14 +182,39 @@ end
 
 local function addPrompt(parent: BasePart, name: string, action: string, hold: number, fn)
 	local prompt = Instance.new("ProximityPrompt")
+	prompt.Style = Enum.ProximityPromptStyle.Custom
 	prompt.Name = name
 	prompt.ActionText = action
 	prompt.HoldDuration = hold
 	prompt.RequiresLineOfSight = false
 	prompt.MaxActivationDistance = math.max(8, parent.Size.Magnitude / 2 + 4)
 	prompt.KeyboardKeyCode = if name == "Build" then Enum.KeyCode.F else Enum.KeyCode.G
+	prompt.GamepadKeyCode = if name == "Build" then Enum.KeyCode.ButtonX else Enum.KeyCode.ButtonY
 	prompt.Parent = parent
-	prompt.Triggered:Connect(fn)
+	local started: { [Player]: number } = {}
+	prompt.PromptButtonHoldBegan:Connect(function(player)
+		local root = rootOf(player)
+		if root and (root.Position - parent.Position).Magnitude <= prompt.MaxActivationDistance then
+			started[player] = os.clock()
+		end
+	end)
+	prompt.PromptButtonHoldEnded:Connect(function(player)
+		started[player] = nil
+	end)
+	prompt.Triggered:Connect(function(player)
+		local root = rootOf(player)
+		local since = started[player]
+		started[player] = nil
+		if
+			root
+			and parent:IsDescendantOf(workspace)
+			and not MedicalService.isIncapacitated(player)
+			and (root.Position - parent.Position).Magnitude <= prompt.MaxActivationDistance
+			and (hold <= 0 or (since ~= nil and os.clock() - since >= math.max(0, hold - 0.15)))
+		then
+			fn(player)
+		end
+	end)
 	return prompt
 end
 
@@ -291,50 +320,133 @@ local function place(player: Player, kind: any, cf: any)
 	notify(player, def.name .. " placed. Build it up with a Hammer", "result")
 end
 
--- Trucks ------------------------------------------------------------------------------------------------
+-- Cargo -----------------------------------------------------------------------------------------------
+local function canAccessCargo(player: Player, model: Model): boolean
+	local range = cargoVehicles[model]
+	local primary = model.PrimaryPart
+	local root = rootOf(player)
+	if not range or not primary or not root or not model:IsDescendantOf(workspace) then
+		return false
+	end
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	return Cargo.canAccess({
+		side = sideOf(player),
+		vehicleSide = model:GetAttribute("Side") :: string?,
+		alive = hum ~= nil and hum.Health > 0 and ((model:GetAttribute("Health") :: number?) or 0) > 0,
+		conscious = not MedicalService.isIncapacitated(player),
+		distance = (root.Position - primary.Position).Magnitude,
+		range = range,
+	})
+end
+
+local function cargoSource(model: Model)
+	local primary = model.PrimaryPart
+	if not primary then
+		return nil, nil
+	end
+	local side = model:GetAttribute("Side") :: string?
+	for _, pos in mains(side) do
+		if (primary.Position - pos).Magnitude <= Config.MainRadius then
+			return "main", nil
+		end
+	end
+	local fob = fobAt(primary.Position, side)
+	if fob and math.abs(primary.Position.Y - fob.part.Position.Y) <= Config.MainRadius then
+		return "fob", fob
+	end
+	return nil, nil
+end
+
+local function sendCargo(player: Player, model: Model, message: string?, opened: boolean?)
+	if not canAccessCargo(player, model) then
+		cargoSessions[player] = nil
+		Remotes.get("VehicleCargoState"):FireClient(player, nil)
+		return
+	end
+	local kind, fob = cargoSource(model)
+	Remotes.get("VehicleCargoState"):FireClient(player, {
+		model = model,
+		name = model.Name,
+		cargo = model:GetAttribute("Supplies") or 0,
+		capacity = model:GetAttribute("SupplyCap") or 0,
+		source = kind,
+		sourceName = if kind == "main" then "MAIN BASE" elseif fob then "FOB " .. fob.id else "NO DEPOT IN RANGE",
+		stock = if fob then fob.stock else 0,
+		stockCapacity = Config.FobMaxStock,
+	}, message, opened)
+end
+
+local function cargoRequest(player: Player, action: any, model: any, amount: any)
+	if action == "close" then
+		cargoSessions[player] = nil
+		return
+	end
+	local now = os.clock()
+	if now - (cargoRequests[player] or 0) < Config.CargoCooldown then
+		return
+	end
+	cargoRequests[player] = now
+	if typeof(model) ~= "Instance" or not model:IsA("Model") or not cargoVehicles[model] then
+		return
+	end
+	if not canAccessCargo(player, model) then
+		cargoSessions[player] = nil
+		Remotes.get("VehicleCargoState"):FireClient(player, nil)
+		return
+	end
+	if action == "open" then
+		cargoSessions[player] = model
+		sendCargo(player, model, nil, true)
+		return
+	end
+	if (action ~= "load" and action ~= "unload") or cargoSessions[player] ~= model then
+		return
+	end
+	local kind, fob = cargoSource(model)
+	if not kind then
+		sendCargo(player, model, "Move within range of your main base or a friendly FOB")
+		return
+	end
+	local cargo, stock, moved, why = Cargo.move({
+		cargo = model:GetAttribute("Supplies") or 0,
+		capacity = model:GetAttribute("SupplyCap") or 0,
+		stock = if fob then fob.stock else 0,
+		stockCapacity = Config.FobMaxStock,
+		unlimited = kind == "main",
+	}, action == "load", amount)
+	model:SetAttribute("Supplies", cargo)
+	if fob then
+		fob.stock = stock
+		publish(fob)
+	end
+	sendCargo(
+		player,
+		model,
+		why or string.format("%s %d supplies", if action == "load" then "Loaded" else "Unloaded", moved)
+	)
+end
+
 function LogisticsService.onVehicle(model: Model, def)
 	if (def.supplies or 0) <= 0 or not model.PrimaryPart then
 		return
 	end
+	cargoVehicles[model] = def.size.Z / 2 + Config.CargoRange
+	model.Destroying:Once(function()
+		cargoVehicles[model] = nil
+	end)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "Supplies"
-	prompt.ActionText = "Load / unload supplies"
+	prompt.Style = Enum.ProximityPromptStyle.Custom
+	prompt.ActionText = "Open cargo inventory"
 	prompt.ObjectText = def.name
-	prompt.KeyboardKeyCode = Enum.KeyCode.G
-	prompt.HoldDuration = 1
+	prompt.KeyboardKeyCode = Enum.KeyCode.V
+	prompt:SetAttribute("InteractionKey", "V")
+	prompt.GamepadKeyCode = Enum.KeyCode.ButtonY
 	prompt.RequiresLineOfSight = false
-	prompt.MaxActivationDistance = def.size.Z / 2 + 6
+	prompt.MaxActivationDistance = cargoVehicles[model]
 	prompt.Parent = model.PrimaryPart
 	prompt.Triggered:Connect(function(player)
-		local side = model:GetAttribute("Side")
-		if sideOf(player) ~= side or model:GetAttribute("Health") == 0 then
-			return
-		end
-		local primary = model.PrimaryPart
-		if not primary then
-			return
-		end
-		local pos = primary.Position
-		local cargo = model:GetAttribute("Supplies") or 0
-		local cap = model:GetAttribute("SupplyCap") or 0
-		for _, m in mains(side) do
-			if flat(m, pos) <= Config.MainRadius then
-				local n = Logistics.transfer(math.huge, cargo, cap)
-				model:SetAttribute("Supplies", cargo + n)
-				notify(player, string.format("Loaded %d supplies", n), "result")
-				return
-			end
-		end
-		local fob = fobAt(pos, side)
-		if fob then
-			local n = Logistics.transfer(cargo, fob.stock, Config.FobMaxStock)
-			model:SetAttribute("Supplies", cargo - n)
-			fob.stock += n
-			publish(fob)
-			notify(player, string.format("Unloaded %d supplies (FOB has %d)", n, fob.stock), "result")
-			return
-		end
-		notify(player, "Load supplies at your main base, unload them inside a friendly FOB's radius")
+		cargoRequest(player, "open", model)
 	end)
 end
 
@@ -394,6 +506,10 @@ local function onRequest(player: Player, action: any, a: any, b: any)
 end
 
 function LogisticsService.reset()
+	for player in cargoSessions do
+		Remotes.get("VehicleCargoState"):FireClient(player, nil)
+	end
+	table.clear(cargoSessions)
 	for _, fob in table.clone(fobs) do
 		removeFob(fob)
 	end
@@ -411,6 +527,15 @@ function LogisticsService.init()
 	folder.Name = "Structures"
 	folder.Parent = workspace
 	Remotes.get("Build").OnServerEvent:Connect(onRequest)
+	Remotes.get("VehicleCargo").OnServerEvent:Connect(cargoRequest)
+	task.spawn(function()
+		while folder.Parent do
+			task.wait(0.5)
+			for player, model in cargoSessions do
+				sendCargo(player, model)
+			end
+		end
+	end)
 	local function onPlayer(player: Player)
 		player.CharacterAdded:Connect(function(character)
 			onCharacter(player, character)
@@ -425,6 +550,8 @@ function LogisticsService.init()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil
+		cargoSessions[player] = nil
+		cargoRequests[player] = nil
 	end)
 end
 

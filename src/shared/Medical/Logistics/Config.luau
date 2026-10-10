@@ -14,6 +14,8 @@ LogisticsConfig.PlaceRange = 40 -- how far from yourself you can place
 LogisticsConfig.HabBlockRadius = 40 -- can't spawn at a HAB with a conscious enemy this close
 LogisticsConfig.DismantleSeconds = 6 -- enemies dismantling a FOB radio
 LogisticsConfig.BuildHold = 1 -- seconds per hammer hit (one build point)
+LogisticsConfig.CargoRange = 8 -- extra range beyond a vehicle's half-length
+LogisticsConfig.CargoCooldown = 0.25
 
 export type StructureDef = { name: string, cost: number, build: number, size: Vector3, color: Color3, order: number }
 

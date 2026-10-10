@@ -27,6 +27,8 @@ Remotes.Names = {
 	"PingState", -- S->C (pings) the pings this player can see
 	"Build", -- C->S ("place", kind, CFrame) | ("spawnAt", habId?)
 	"Vehicle", -- C->S ("aim" | "fire", vehicle, direction) mounted gun
+	"VehicleCargo", -- C->S ("open" | "close" | "load" | "unload", model, amount)
+	"VehicleCargoState", -- S->C (snapshot?, message?) cargo screen; nil closes it
 	"Gear", -- C->S (action, ...) inventory requests
 	"GearState", -- S->C (gear snapshot, nearby source) inventory state
 	"LockerTake", -- C->S (slot BasePart) take / equip a weapon from a locker

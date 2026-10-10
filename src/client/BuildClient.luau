@@ -90,24 +90,27 @@ function BuildClient.init(screen: ScreenGui)
 			PaddingRight = UDim.new(0, 8),
 		}),
 	})
+	Ui.stroke(menu)
+	Ui.fit(menu, 270, 470)
+	Ui.modal(menu)
 	Ui.label({
-		Text = "BUILD  (B to close)",
+		Text = "CONSTRUCTION  /  B",
 		Font = T.FontBold,
 		Size = UDim2.new(1, 0, 0, 20),
 		LayoutOrder = 0,
 		Parent = menu,
 	})
 	for kind, def in Config.Structures do
-		local button = Ui.make("TextButton", {
+		local button = Ui.button({
 			Text = string.format("%s   %s", def.name, if def.cost > 0 then def.cost .. " supplies" else "free"),
 			Font = T.Font,
 			TextSize = 14,
 			TextColor3 = T.Text,
 			BackgroundColor3 = T.PanelLight,
-			Size = UDim2.new(1, 0, 0, 28),
+			Size = UDim2.new(1, 0, 0, 38),
 			LayoutOrder = def.order,
 			Parent = menu,
-		}, { Ui.corner(4) })
+		})
 		button.MouseButton1Click:Connect(function()
 			startGhost(kind)
 		end)

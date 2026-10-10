@@ -68,14 +68,14 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 
 | Key | Action |
 |---|---|
-| F (prompt) | Open the medical menu on a nearby patient |
+| Left Alt (hold) + click Treat | Open the medical menu on the patient under your cursor |
 | H | Self-treatment menu |
 | X | Cancel the current treatment (also stops repeating CPR) |
-| G | Drop a carried / dragged patient |
-| I | Toggle the medical bag |
+| Left Alt (hold) + G | Drop a carried / dragged patient |
+| I | Toggle personal field inventory anywhere (the medical bag is on its HUD button) |
 | F2 | Toggle the debug panel (Studio / admins only, hidden by default) |
 
-**Guns** (equip with the hotbar, 1/2/3):
+**Guns** (custom hotbar: 1 primary / 2 handgun / 3 launcher; 0 holsters):
 
 | Input | Action |
 |---|---|
@@ -83,10 +83,10 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 | Right mouse | Aim down sights (zooms in, lower mouse sensitivity) |
 | R | Reload |
 | V | Switch fire mode (M4A1: auto / semi) |
-| Left Alt (hold) | Free the mouse cursor |
+| Left Alt (hold) | Free the cursor and reveal the targeted object's interactions; blocks firing |
 | Left Shift (hold) | Sprint (gun lowered, can't shoot) |
 | C | Crouch / stand (lowers your hitbox) |
-| Q / E | Lean left / right (press again to stand straight) |
+| Q / E | Lean left / right on foot (press again to stand straight; disabled while driving) |
 
 Sprint, crouch and lean also work without a gun.
 
@@ -255,14 +255,20 @@ dependencies and is tested under Lune.
 
 ## Inventory and weight (ArmA-style)
 
-Press **I** to open the inventory. The left side is whatever is next to you: the **arsenal** (weapon lockers, or any Part/Model tagged `Arsenal`) or **dropped gear** on the ground. The right side is your gear: PRIMARY / HANDGUN / LAUNCHER weapon slots, then UNIFORM, VEST and BACKPACK containers, each with its own load in kg.
+Press **I** or click the hotbar's **INVENTORY** button to open your personal inventory **anywhere**; a locker is not required. A direct input handler accepts I even when Roblox marks it processed; a separate context binding consumes camera zoom without toggling twice. Typing, Roblox's menu, other visible menus and dead/unconscious characters still block opening. Hidden modal ancestors do not. The left side shows a nearby **arsenal** (weapon lockers, or any Part/Model tagged `Arsenal`) or **dropped gear**; away from both it is empty. The right side always shows your gear: PRIMARY / HANDGUN / LAUNCHER weapon slots, then UNIFORM, VEST and BACKPACK containers, each with its own load in kg. Taking items and transfers remain server/range-validated.
 
 - Left click an item to take one (one magazine for ammo) into the selected container; right click takes five. In your containers, left click drops one, right click drops all, and the U / V / B buttons move one to another container. **X** on a slot takes it off.
+- **Drag-and-drop:** drag a carried stack onto an equipped container or its contents panel to transfer it. Hold **Shift** when starting the drag to move one item / magazine instead. Drag arsenal weapons/containers onto their matching slots to equip or replace them; drag ordinary source items onto a container to take them. Arsenal drags take one unit; dropped-gear drags move a stack. Drag carried items or a worn slot onto the left panel to drop/return them. Compatible destinations glow green, and the hovered destination is amber. Outside/invalid drops, right-click, Escape, closing the inventory and focus loss cancel without changing gear. Server refreshes do not rebuild rows mid-drag; source identity, current ownership and capacity are rechecked.
+- **Equip equipment:** click **E** on a Hammer/Radio row or drag it onto **EQUIP ITEM**. A source Hammer/Radio dropped there is taken and equipped only if it fits. Held Tools are server-created proxies for items you actually own: equipping does not remove, duplicate or add weight to the stack. Losing the last item removes its Tool. Hammer/Radio have simple placeholder held models; radio channels continue to use bag ownership, not the held Tool.
 - Every item has a weight (`src/shared/Medical/Gear/Config.luau`). Above 25 kg you slow down (70% speed at 60 kg), above 50 kg you can't sprint, and heavier loads drain sprint stamina faster.
 - Ammo lives in the inventory: reloading uses it, and the weapon locker's ammo box tops you up to your class kit amount.
-- You spawn with your class kit (`GearConfig.Kits`). Medics get medical level 1, a chest rig and a Carryall full of medical gear; everyone gets a Radio and a Hammer for now.
+- You spawn with your class kit (`GearConfig.Kits`): weapons and a uniform, with **empty vest and backpack slots**. All starter ammo, a Radio, a Hammer and basic medical supplies fit the uniform's 8 kg capacity. Machine Gunners start with eight rifle magazines. Medics still have medical level 1, but start with the basic medical supplies too (`GearConfig.SpawnMedicalLoadoutLevel`); equip containers from the arsenal before stocking a larger medical kit.
 - The arsenal offers basic medical items to everyone and the full medical list to medics. Dropped gear disappears after 5 minutes.
 - Backpacks and vests don't have character models yet.
+
+### Custom hotbar
+
+The bottom-centre charcoal/amber hotbar replaces Roblox's default backpack UI. **1 / 2 / 3** always select Primary / Handgun / Launcher, **4** selects Hammer and **5** selects Radio, even if another slot is empty. Click a slot or press its number to equip; selecting the held item again holsters it. **0** holsters everything. The equipped slot has an amber border, and the **I / INVENTORY** card opens field gear. Extra Roblox Tools, if present, use slots **6–9**. Tool selection uses the existing Humanoid equip pipeline; the server validates held equipment against owned inventory. The bar hides during menus, death/unconsciousness and vehicle seating.
 
 ## Chat and radio
 
@@ -276,19 +282,33 @@ Chat uses Roblox's TextChatService (so Roblox's text filter still applies), with
 
 ## Map, compass and pings
 
-- **Minimap** (top right): north-up, centred on you, showing the grid, objectives in their owner's colour, main bases, friendlies (green = your squad, blue = the rest of your side) and pings.
+- **Minimap** (top right): north-up, centred on you, showing the grid, objectives in their owner's colour, main bases, friendlies (green = your squad, blue = the rest of your side) and pings. Your arrow follows the character model's facing direction, not the camera (also on the fullscreen map); the compass still follows your view direction.
 - **Fullscreen map**: press **M**. It shows the whole battlefield with lettered/numbered grid squares and player names. Left click places a ping, right click clears your pings. The main menu moved to **P**.
 - **Compass** (top centre): bearing, your grid square, and pings marked on the strip.
-- **Pings**: press **T** to ping where you're looking. Pings show on the map, minimap, compass and in the world with a distance.
+- **Pings**: press **T** to ping the world surface **directly at your cursor**, not the centre of the camera. Hold **Left Alt** to unlock/move the cursor in first person, then press T. The ray uses raw viewport coordinates without adding Roblox's top-bar inset, and ignores your character and first-person viewmodel. The world diamond is centred on that exact hit point, with the distance label below it. Pings show on the map, minimap, compass and in the world. Fullscreen-map clicks still ping the clicked map position.
   - Squad members' pings: only their squad sees them.
   - Squad Commander pings: every squad on the side.
   - Commander pings: everyone on the side. Enemies never see your pings.
   - Pings last 45 seconds. Each player has a limit (Commander 5, Squad Commander 3, others 2), and the oldest is replaced.
 - Settings: `GameConfig.Map` in `src/shared/Medical/GameMode/Config.luau`.
 
+## Interface and R6 characters
+
+The game uses **true R6** characters. Both Rojo projects set `StarterPlayer.GameSettingsAvatar` to R6; the previous blocky-R15 character override has been removed. If your existing Studio place still spawns R15, set **Game Settings > Avatar > Avatar Type: R6**, save, and restart Play. The server logs a warning when a character is not R6. Medical hit zones, ragdoll, carrying and third-person animation joints support R6; crouch uses a six-part pose and lowers the hitbox. First-person arms are a separate procedural viewmodel.
+
+Menus use a shared charcoal/amber tactical theme with thin borders, button hover feedback, and windows scaled to the viewport. The main menu has a left-hand operations panel; medical, inventory, squads and construction use the same visual language.
+
+World interactions are **hold-Alt, cursor-targeted**, ArmA-style:
+
+1. Get within reach, **hold Left Alt**, and point at a player, vehicle or object.
+2. The selected target is highlighted and its custom action cards open beside the cursor. Move onto a card and **left-click**; for longer actions, keep the mouse button held until the progress bar completes. **Vehicle cargo is the exception:** keep Alt held and press the card's **V** shortcut.
+3. **Release Alt** to hide the actions and cancel an unfinished hold. Moving out of reach, opening a modal, typing, becoming unconscious or losing window focus also disables interactions.
+
+No interaction prompts appear simply because you are nearby. Only the selected object's actions are enabled locally. Native F/G world-prompt activation is disabled; Roblox's prompt hold/trigger pipeline remains underneath and the server still validates each action. Weapon-locker item clicks also require Alt. Personal menus (I/H/P/M), vehicle exit (Space), and actions inside an already-open menu keep their normal controls. Weapon and mounted-gun firing are blocked while Alt is held.
+
 ## Vehicles
 
-Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up to a post and hold **F** to deploy. The post shows how many are out and when the next one is ready.
+Each main base has a **vehicle pad** with a motor pool post per vehicle: hold **Left Alt**, point at a post and click/hold its **Deploy** action. The post shows how many are out and when the next one is ready.
 
 | Vehicle | Max per side | Cooldown | Seats | Gun |
 | --- | --- | --- | --- | --- |
@@ -299,7 +319,13 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up
 | Helicopter | 2 | 8 min | pilot, 6 | none |
 
 - **Cooldowns:** every vehicle starts its own timer when it's deployed. A new one can only spawn while fewer than the max are alive and a timer has run out.
-- **Seats:** press **F** near a vehicle to get in or switch seats, and **Space** to get out. Only your own side can get in.
+- **Seats:** hold **Left Alt**, point at the vehicle and click **Get in / switch seat**. **Space** gets you out. Only your own side can get in.
+- **Cargo inventory:** hold **Left Alt**, point at a friendly vehicle, then press **V** on its cargo action. V alone does not open cargo. It shows onboard supplies/capacity and the nearby depot. Select **50 / 100 / 250 / 500 / ALL**, then click **Load into vehicle** or **Unload to depot**. **V**, **Escape** or **X** closes it.
+  - At **main**, loading draws from unlimited supplies; unloading returns cargo to main.
+  - Inside a **friendly FOB** radius, transfers work both ways between its stock (maximum 3000) and the vehicle. Amounts are clamped to available stock and free space.
+  - Away from a depot you can inspect cargo, but transfer buttons are disabled. Cargo closes if you move out of interaction range, die, become unconscious, switch sides or the vehicle is destroyed/despawned.
+  - Configurable capacities: **Truck 1000, Helicopter 600, APC 300, IFV 200, MRAP 150**.
+  - The server owns every transfer and validates the registered vehicle, player/team, distance, vehicle health, quantity, source and capacity. Other viewers receive refreshed stock; menus never change supplies locally. Driving inputs and weapon fire are blocked while a menu is open.
 - **Driving:** WASD. Helicopters use W/S for speed, A/D to turn and E/Q to climb or descend.
 - **Gunner seat:** aim with the mouse, left click fires. The server checks the seat, fire rate and aim.
 - **Despawning:** a vehicle left empty for 2 minutes despawns.
@@ -309,18 +335,14 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: walk up
 
 ## Logistics and base building
 
-- **Supplies:** drive a **Logistics Truck** (holds 1000) and hold **G** next to it. At your main base this loads it full. Inside a friendly FOB's radius it unloads into the FOB (max 3000).
+- **Supplies:** use **Left Alt + V** on a friendly vehicle to load supplies at main and unload them into a friendly FOB (max 3000). Trucks carry 1000 and smaller vehicles have their own configurable capacities. You can also reload from a stocked FOB.
 - **Placing (Squad Commanders and the Commander only):** press **B** for the build menu, pick a structure, then move the green ghost with the mouse. **R** rotates, left click places, right click cancels.
   - A **FOB Radio** is free, but must be 300 studs from a main base and 250 from another FOB.
   - Everything else must be inside a friendly FOB's 150-stud radius and is paid from that FOB's supplies when placed: HAB 300 (one per FOB), Ammo Crate 150, Bunker 250, HESCO 60, Sandbags 20, Razor Wire 15.
-- **Building (everyone):** placed structures are see-through blueprints. Hold **F** on one with a **Hammer** in your inventory; each hit adds one build point until it's solid.
+- **Building (everyone):** placed structures are see-through blueprints. Equip your **Hammer** (hotbar **4**), hold **Left Alt**, point at one and hold its **Build** action; each completed hold adds one build point until it's solid. The server checks both Hammer ownership and the held Tool.
 - **Structures:** a finished Ammo Crate works like an arsenal (press I next to it). A finished **HAB** shows on the map: click it on the fullscreen map (M) to respawn there. You spawn at main instead if an enemy is within 40 studs of it.
-- **Removing:** leaders can hold **G** to remove their side's structures (supplies are refunded). Enemies can hold **G** for 6 seconds on a FOB radio to dismantle the whole FOB.
+- **Removing:** hold **Left Alt**, target the structure and hold **Remove** (leaders, supplies refunded) or **Dismantle** (enemy FOB radio, 6 seconds).
 - Everything is cleared when a new round starts. Settings: `src/shared/Medical/Logistics/Config.luau`. Models are placeholder blocks.
-
-## Characters
-
-Everyone spawns as an **R15** rig with the classic blocky body parts and classic scaling (`src/server/CharacterLook.luau`), so characters look like R6 but keep R15 joints for animations, crouch, lean and ragdoll. Players keep their own clothes, face, accessories and skin colours. The project sets the place's avatar type to R15; if Output warns that characters are R6, set Home > Game Settings > Avatar > Avatar Type to R15.
 
 ## Roblox content and maturity
 

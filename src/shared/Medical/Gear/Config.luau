@@ -8,6 +8,7 @@ GearConfig.InventoryKey = "I" -- Enum.KeyCode name
 GearConfig.SourceRange = 12 -- studs to an arsenal / dropped items to use them
 GearConfig.PileLifetime = 300 -- seconds dropped items stay on the ground
 GearConfig.ClassSetsMedicalLevel = true -- Medic class = medical level 1, everyone else 0
+GearConfig.SpawnMedicalLoadoutLevel = 0 -- basic supplies fit the uniform; restock larger kits after equipping storage
 
 -- Movement: no slowdown up to FreeMass, then walk speed falls linearly to MinSpeed at MaxMass.
 GearConfig.FreeMass = 25
@@ -29,6 +30,7 @@ export type GearDef = {
 	weaponId: string?,
 	roundsPer: number?,
 	arsenal: boolean?, -- offered by the arsenal (medical items are always offered)
+	equipable: boolean?,
 }
 
 GearConfig.Items = {
@@ -69,8 +71,8 @@ GearConfig.Items = {
 	},
 	Carryall = { name = "Carryall", kind = "container", slot = "backpack", capacity = 36, mass = 3.5, arsenal = true },
 	-- Equipment
-	Radio = { name = "Radio", kind = "item", mass = 0.8, arsenal = true },
-	Hammer = { name = "Hammer", kind = "item", mass = 1, arsenal = true },
+	Radio = { name = "Radio", kind = "item", mass = 0.8, arsenal = true, equipable = true },
+	Hammer = { name = "Hammer", kind = "item", mass = 1, arsenal = true, equipable = true },
 } :: { [string]: GearDef }
 
 -- Ammo item used by each weapon.
@@ -124,49 +126,37 @@ GearConfig.Kits = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "AssaultPack",
 		items = with({ { "Ammo556", 30 * 7 } }),
 	},
 	["Squad Commander"] = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "AssaultPack",
 		items = with({ { "Ammo556", 30 * 6 } }),
 	},
 	Commander = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "AssaultPack",
 		items = with({ { "Ammo556", 30 * 5 } }),
 	},
-	Medic = { -- lighter chest rig instead of a plate carrier to make room for the medical gear
+	Medic = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "ChestRig",
-		backpack = "Carryall",
 		items = with({ { "Ammo556", 30 * 5 } }),
 	},
 	Engineer = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "FieldPack",
 		items = with({ { "Ammo556", 30 * 5 } }),
 	},
 	["Machine Gunner"] = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "FieldPack",
-		items = with({ { "Ammo556", 30 * 12 } }),
+		items = with({ { "Ammo556", 30 * 8 } }),
 	},
 } :: { [string]: Kit }
 

@@ -14,7 +14,7 @@
     },
     "StarterPlayer": {
       "$properties": {
-        "GameSettingsAvatar": "R15"
+        "GameSettingsAvatar": "R6"
       },
       "StarterPlayerScripts": {
         "MedicalClient": {

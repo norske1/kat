@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local WeaponConfig = require(Medical:WaitForChild("Weapons").Config)
+local Stance = require(Medical.Weapons.Stance)
 local Remotes = require(Medical.Remotes)
 local Gear = require(Medical:WaitForChild("Gear").Gear)
 local GearConfig = require(Medical.Gear.Config)
@@ -48,8 +49,10 @@ end
 
 local function busy(): boolean
 	local char = character()
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	return blocked
 		or not char
+		or Stance.isDriving(hum)
 		or char:GetAttribute("MedRagdoll") == true
 		or char:GetAttribute("MedAnim") ~= nil
 		or char:GetAttribute("MedCarryAnim") ~= nil
@@ -117,6 +120,11 @@ local function beforeCamera(dt: number)
 	local head = char and char:FindFirstChild("Head")
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not hum then
+		return
+	end
+	if Stance.isDriving(hum) then
+		lean = 0
+		hum.CameraOffset = Vector3.zero
 		return
 	end
 	local target = state.lean
