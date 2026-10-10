@@ -201,27 +201,19 @@ local function addPrompt(parent: BasePart, name: string, action: string, hold: n
 	prompt:SetAttribute("InteractionStyle", if name == "Build" then "build" else "destructive")
 	prompt.GamepadKeyCode = if name == "Build" then Enum.KeyCode.ButtonX else Enum.KeyCode.ButtonY
 	prompt.Parent = parent
-	local started: { [Player]: number } = {}
-	prompt.PromptButtonHoldBegan:Connect(function(player)
-		local root = rootOf(player)
-		if root and (root.Position - parent.Position).Magnitude <= prompt.MaxActivationDistance then
-			started[player] = os.clock()
-		end
-	end)
-	prompt.PromptButtonHoldEnded:Connect(function(player)
-		started[player] = nil
-	end)
+	-- Roblox runs the hold timer before Triggered reaches the server; the per-player gap only stops replay spam.
+	local last: { [Player]: number } = {}
 	prompt.Triggered:Connect(function(player)
 		local root = rootOf(player)
-		local since = started[player]
-		started[player] = nil
+		local now = os.clock()
 		if
 			root
 			and parent:IsDescendantOf(workspace)
 			and not MedicalService.isIncapacitated(player)
-			and (root.Position - parent.Position).Magnitude <= prompt.MaxActivationDistance
-			and (hold <= 0 or (since ~= nil and os.clock() - since >= math.max(0, hold - 0.15)))
+			and (root.Position - parent.Position).Magnitude <= prompt.MaxActivationDistance + 4
+			and (hold <= 0 or now - (last[player] or -math.huge) >= math.max(0, hold - 0.15))
 		then
+			last[player] = now
 			fn(player)
 		end
 	end)

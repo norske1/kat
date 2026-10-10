@@ -64,7 +64,7 @@ function InteractionUi.init()
 		if state.tween then
 			state.tween:Cancel()
 		end
-		if (state.touching or state.holding) and prompt.Parent then
+		if (state.touching or state.keyDown or state.holding) and prompt.Parent then
 			prompt:InputHoldEnd()
 		end
 		for _, c in state.connections do
@@ -104,6 +104,37 @@ function InteractionUi.init()
 	UserInputService.InputEnded:Connect(function(input)
 		if input.KeyCode == Enum.KeyCode.LeftAlt then
 			cancel()
+		end
+	end)
+	-- Shortcut keys (F build, G dismantle, V cargo) are handled here, not by Roblox, so only the selected target's
+	-- matching card starts its hold.
+	UserInputService.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Keyboard or not InteractionInput.isActive() then
+			return
+		end
+		for prompt, state in visible do
+			if
+				selected[prompt]
+				and not state.keyDown
+				and not state.touching
+				and Interaction.matches(prompt, input.KeyCode)
+			then
+				state.keyDown = true
+				prompt:InputHoldBegin()
+			end
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Keyboard then
+			return
+		end
+		for prompt, state in visible do
+			if state.keyDown and Interaction.matches(prompt, input.KeyCode) then
+				state.keyDown = false
+				if prompt.Parent then
+					prompt:InputHoldEnd()
+				end
+			end
 		end
 	end)
 	UserInputService.WindowFocusReleased:Connect(cancel)
@@ -165,7 +196,8 @@ function InteractionUi.init()
 			BackgroundColor3 = T.Accent,
 			Parent = card,
 		})
-		local state: { [string]: any } = { card = card, connections = {}, touching = false, holding = false }
+		local state: { [string]: any } =
+			{ card = card, connections = {}, touching = false, keyDown = false, holding = false }
 		visible[prompt] = state
 		local function refresh()
 			local shortcut = prompt:GetAttribute("InteractionKey")
@@ -177,7 +209,13 @@ function InteractionUi.init()
 			key.Text = shortcut or "LMB"
 			object.Text = prompt.ObjectText:upper()
 			local verb = if prompt.HoldDuration > 0 then "Hold" elseif shortcut then "Press" else "Click"
-			action.Text = verb .. " · " .. prompt.ActionText
+			local character = player.Character
+			if style == "build" and character and character:GetAttribute("GearHeldItem") ~= "Hammer" then
+				action.Text = "Equip your Hammer first (hotbar)"
+				action.TextColor3 = T.Bad
+			else
+				action.Text = verb .. " · " .. prompt.ActionText
+			end
 		end
 		local function finish()
 			if state.tween then
@@ -188,6 +226,9 @@ function InteractionUi.init()
 		end
 		table.insert(state.connections, prompt.Changed:Connect(refresh))
 		table.insert(state.connections, prompt.AttributeChanged:Connect(refresh))
+		if player.Character then
+			table.insert(state.connections, player.Character.AttributeChanged:Connect(refresh))
+		end
 		table.insert(
 			state.connections,
 			prompt.Destroying:Connect(function()
@@ -278,7 +319,7 @@ function InteractionUi.init()
 		end
 		local holding = false
 		for _, state in visible do
-			holding = holding or state.touching or state.holding
+			holding = holding or state.touching or state.keyDown or state.holding
 		end
 		if not active then
 			target = nil

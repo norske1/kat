@@ -63,7 +63,13 @@ function Interaction.clickable(prompt: ProximityPrompt): boolean
 	return prompt:GetAttribute("InteractionKey") == nil or prompt.HoldDuration > 0
 end
 
--- Clicks only reach a prompt through its card (InputHoldBegin); Roblox must not trigger prompts on its own.
+-- The client drives F/G/V itself (InputHoldBegin/End), so a shortcut press only reaches the cards it belongs to.
+function Interaction.matches(prompt: Instance, key: Enum.KeyCode): boolean
+	return key ~= Interaction.NoKeyboard and Interaction.shortcut(prompt) == key
+end
+
+-- Roblox never triggers a prompt on its own: no engine key, no engine click. Cards and shortcut keys call
+-- InputHoldBegin/End, which still goes through Roblox's hold timer and fires Triggered on the server.
 function Interaction.configure(prompt: ProximityPrompt)
 	prompt.Style = Enum.ProximityPromptStyle.Custom
 	prompt.ClickablePrompt = false
@@ -71,9 +77,8 @@ function Interaction.configure(prompt: ProximityPrompt)
 	if prompt.GamepadKeyCode ~= Interaction.NoGamepad then
 		prompt.GamepadKeyCode = Interaction.NoGamepad
 	end
-	local key = Interaction.shortcut(prompt)
-	if prompt.KeyboardKeyCode ~= key then
-		prompt.KeyboardKeyCode = key
+	if prompt.KeyboardKeyCode ~= Interaction.NoKeyboard then
+		prompt.KeyboardKeyCode = Interaction.NoKeyboard
 	end
 end
 

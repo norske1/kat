@@ -135,8 +135,10 @@ local function startGhost(kind: string)
 	ghost, ghostKind = p, kind
 	ghostStatus.Visible = true
 	menu.Visible = false
-	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local held = character and character:FindFirstChildOfClass("Tool")
+	if humanoid and held and held:GetAttribute("WeaponId") then
 		humanoid:UnequipTools()
 	end
 end

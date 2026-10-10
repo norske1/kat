@@ -994,20 +994,29 @@ test("interaction prompts: F/G/V shortcuts, no bare-click triggers, V card is ke
 	end
 	local seat = prompt(nil, 0)
 	expect(seat.KeyboardKeyCode == Interaction.NoKeyboard, "cards without a shortcut are click-only")
+	expect(
+		not Interaction.matches(seat, Roblox.Enum.KeyCode.F) and not Interaction.matches(seat, Interaction.NoKeyboard)
+	)
 	expect(seat.ClickablePrompt == false, "Roblox must not trigger prompts on a bare click")
 	expect(seat.Style == Roblox.Enum.ProximityPromptStyle.Custom)
 	expect(Interaction.clickable(seat))
 	local cargo = prompt("V", 0)
-	expect(cargo.KeyboardKeyCode == Roblox.Enum.KeyCode.V and cargo.ClickablePrompt == false)
+	expect(cargo.KeyboardKeyCode == Interaction.NoKeyboard, "Roblox never handles keys itself; the client does")
+	expect(cargo.ClickablePrompt == false)
+	expect(Interaction.matches(cargo, Roblox.Enum.KeyCode.V) and not Interaction.matches(cargo, Roblox.Enum.KeyCode.F))
 	expect(not Interaction.clickable(cargo), "cargo opens with V only, never with the seat click")
 	local build, dismantle = prompt("F", 1), prompt("G", 6)
-	expect(build.KeyboardKeyCode == Roblox.Enum.KeyCode.F and dismantle.KeyboardKeyCode == Roblox.Enum.KeyCode.G)
-	expect(build.KeyboardKeyCode ~= dismantle.KeyboardKeyCode, "build and dismantle use different keys")
+	expect(Interaction.matches(build, Roblox.Enum.KeyCode.F) and not Interaction.matches(build, Roblox.Enum.KeyCode.G))
+	expect(
+		Interaction.matches(dismantle, Roblox.Enum.KeyCode.G)
+			and not Interaction.matches(dismantle, Roblox.Enum.KeyCode.F)
+	)
+	expect(Interaction.shortcut(build) ~= Interaction.shortcut(dismantle), "build and dismantle use different keys")
 	expect(
 		Interaction.clickable(build) and Interaction.clickable(dismantle),
 		"held actions may also be held on the card"
 	)
-	expect(prompt("Q", 0).KeyboardKeyCode == Interaction.NoKeyboard, "unknown shortcuts are ignored")
+	expect(Interaction.shortcut(prompt("Q", 0)) == Interaction.NoKeyboard, "unknown shortcuts are ignored")
 	-- Mouse/touch InputObjects carry KeyCode Unknown, so Unknown on either slot means "any click triggers me".
 	local unknown = Roblox.Enum.KeyCode.Unknown
 	for _, p in { seat, cargo, build, dismantle } do
