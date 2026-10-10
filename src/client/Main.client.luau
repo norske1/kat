@@ -72,6 +72,9 @@ local GunClient = optional("weapons", function()
 	module.init(screen)
 	return module
 end)
+optional("hotbar", function()
+	require(script.Parent.HotbarUi).init(screen, InventoryUi)
+end)
 
 if Config.HideDefaultHealthBar then
 	task.spawn(function()

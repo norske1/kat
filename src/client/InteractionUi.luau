@@ -78,7 +78,7 @@ function InteractionUi.init()
 		if inst:IsA("ProximityPrompt") then
 			registry[inst] = inst:GetAttribute("InteractionEnabled") ~= false and inst.Enabled
 			inst.Enabled = false
-			inst.KeyboardKeyCode = NO_KEY
+			inst.KeyboardKeyCode = if inst:GetAttribute("InteractionKey") == "V" then Enum.KeyCode.V else NO_KEY
 			inst.GamepadKeyCode = NO_KEY
 			inst.Exclusivity = Enum.ProximityPromptExclusivity.AlwaysShow
 		end
@@ -166,9 +166,11 @@ function InteractionUi.init()
 		local state: { [string]: any } = { card = card, connections = {}, touching = false, holding = false }
 		visible[prompt] = state
 		local function refresh()
-			key.Text = "LMB"
+			local shortcut = prompt:GetAttribute("InteractionKey")
+			key.Text = shortcut or "LMB"
 			object.Text = prompt.ObjectText:upper()
-			action.Text = (if prompt.HoldDuration > 0 then "Hold · " else "Click · ") .. prompt.ActionText
+			action.Text = (if shortcut then "Press · " elseif prompt.HoldDuration > 0 then "Hold · " else "Click · ")
+				.. prompt.ActionText
 		end
 		local function finish()
 			if state.tween then
@@ -204,7 +206,11 @@ function InteractionUi.init()
 					input.UserInputType == Enum.UserInputType.Touch
 					or input.UserInputType == Enum.UserInputType.MouseButton1
 				then
-					if not InteractionInput.isActive() or not selected[prompt] then
+					if
+						not InteractionInput.isActive()
+						or not selected[prompt]
+						or prompt:GetAttribute("InteractionKey")
+					then
 						return
 					end
 					state.touching = true
@@ -299,6 +305,10 @@ function InteractionUi.init()
 			popupPoint = point
 		end
 		for prompt in registry do
+			local keyboard = if prompt:GetAttribute("InteractionKey") == "V" then Enum.KeyCode.V else NO_KEY
+			if prompt.KeyboardKeyCode ~= keyboard then
+				prompt.KeyboardKeyCode = keyboard
+			end
 			local link = prompt:FindFirstChild("InteractionTarget")
 			local owner = if link and link:IsA("ObjectValue")
 				then link.Value

@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local ContextActionService = game:GetService("ContextActionService")
 
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Gear = require(Medical:WaitForChild("Gear").Gear)
@@ -232,7 +233,22 @@ function InventoryUi.isOpen(): boolean
 end
 
 function InventoryUi.setOpen(value: boolean)
-	isOpen = value and Players.LocalPlayer.Character ~= nil
+	local character = Players.LocalPlayer.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if
+		value
+		and not Gear.canOpen({
+			hasCharacter = character ~= nil,
+			alive = humanoid ~= nil and humanoid.Health > 0 and character:GetAttribute("MedAlive") ~= false,
+			conscious = character ~= nil and character:GetAttribute("MedConscious") ~= false,
+			typing = UserInputService:GetFocusedTextBox() ~= nil,
+			modal = Ui.isModalOpen(),
+			alreadyOpen = isOpen,
+		})
+	then
+		return
+	end
+	isOpen = value
 	frame.Visible = isOpen
 	if isOpen then
 		send("open")
@@ -328,6 +344,14 @@ function InventoryUi.init(screen: ScreenGui)
 
 	Ui.window(frame, 880, 540)
 	Ui.modal(frame)
+	Ui.make("TextButton", {
+		Name = "MouseUnlock",
+		Text = "",
+		Modal = true,
+		Size = UDim2.fromOffset(1, 1),
+		BackgroundTransparency = 1,
+		Parent = frame,
+	})
 
 	Ui.label({
 		Text = "FIELD INVENTORY",
@@ -437,13 +461,17 @@ function InventoryUi.init(screen: ScreenGui)
 	end)
 
 	local key = Enum.KeyCode[GearConfig.InventoryKey] or Enum.KeyCode.I
-	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then
-			return
+	ContextActionService:BindActionAtPriority("HellboundInventory", function(_, inputState)
+		if UserInputService:GetFocusedTextBox() or (Ui.isModalOpen() and not isOpen) then
+			return Enum.ContextActionResult.Pass
 		end
-		if input.KeyCode == key then
+		if inputState == Enum.UserInputState.Begin then
 			InventoryUi.toggle()
-		elseif input.KeyCode == Enum.KeyCode.Escape and isOpen then
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.ContextActionPriority.High.Value + 1, key)
+	UserInputService.InputBegan:Connect(function(input)
+		if input.KeyCode == Enum.KeyCode.Escape and isOpen and not UserInputService:GetFocusedTextBox() then
 			InventoryUi.setOpen(false)
 		end
 	end)

@@ -72,10 +72,10 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 | H | Self-treatment menu |
 | X | Cancel the current treatment (also stops repeating CPR) |
 | Left Alt (hold) + G | Drop a carried / dragged patient |
-| I | Toggle field inventory (the medical bag is on its HUD button) |
+| I | Toggle personal field inventory anywhere (the medical bag is on its HUD button) |
 | F2 | Toggle the debug panel (Studio / admins only, hidden by default) |
 
-**Guns** (equip with the hotbar, 1/2/3):
+**Guns** (custom hotbar: 1 primary / 2 handgun / 3 launcher; 0 holsters):
 
 | Input | Action |
 |---|---|
@@ -86,7 +86,7 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 | Left Alt (hold) | Free the cursor and reveal the targeted object's interactions; blocks firing |
 | Left Shift (hold) | Sprint (gun lowered, can't shoot) |
 | C | Crouch / stand (lowers your hitbox) |
-| Q / E | Lean left / right (press again to stand straight) |
+| Q / E | Lean left / right on foot (press again to stand straight; disabled while driving) |
 
 Sprint, crouch and lean also work without a gun.
 
@@ -255,14 +255,18 @@ dependencies and is tested under Lune.
 
 ## Inventory and weight (ArmA-style)
 
-Press **I** to open the inventory. The left side is whatever is next to you: the **arsenal** (weapon lockers, or any Part/Model tagged `Arsenal`) or **dropped gear** on the ground. The right side is your gear: PRIMARY / HANDGUN / LAUNCHER weapon slots, then UNIFORM, VEST and BACKPACK containers, each with its own load in kg.
+Press **I** or click the hotbar's **INVENTORY** button to open your personal inventory **anywhere**; a locker is not required. I takes priority over Roblox's camera zoom shortcut, but doesn't interrupt typing or another open menu. The left side shows a nearby **arsenal** (weapon lockers, or any Part/Model tagged `Arsenal`) or **dropped gear**; away from both it is empty. The right side always shows your gear: PRIMARY / HANDGUN / LAUNCHER weapon slots, then UNIFORM, VEST and BACKPACK containers, each with its own load in kg. Taking items and transfers remain server/range-validated.
 
 - Left click an item to take one (one magazine for ammo) into the selected container; right click takes five. In your containers, left click drops one, right click drops all, and the U / V / B buttons move one to another container. **X** on a slot takes it off.
 - Every item has a weight (`src/shared/Medical/Gear/Config.luau`). Above 25 kg you slow down (70% speed at 60 kg), above 50 kg you can't sprint, and heavier loads drain sprint stamina faster.
 - Ammo lives in the inventory: reloading uses it, and the weapon locker's ammo box tops you up to your class kit amount.
-- You spawn with your class kit (`GearConfig.Kits`). Medics get medical level 1, a chest rig and a Carryall full of medical gear; everyone gets a Radio and a Hammer for now.
+- You spawn with your class kit (`GearConfig.Kits`): weapons and a uniform, with **empty vest and backpack slots**. All starter ammo, a Radio, a Hammer and basic medical supplies fit the uniform's 8 kg capacity. Machine Gunners start with eight rifle magazines. Medics still have medical level 1, but start with the basic medical supplies too (`GearConfig.SpawnMedicalLoadoutLevel`); equip containers from the arsenal before stocking a larger medical kit.
 - The arsenal offers basic medical items to everyone and the full medical list to medics. Dropped gear disappears after 5 minutes.
 - Backpacks and vests don't have character models yet.
+
+### Custom hotbar
+
+The bottom-centre charcoal/amber hotbar replaces Roblox's default backpack UI. **1 / 2 / 3** always select Primary / Handgun / Launcher, even if another slot is empty. Click a slot or press its number to equip; selecting the equipped weapon holsters it. **0** holsters everything. The equipped slot has an amber border, and the **I / INVENTORY** card opens field gear. Extra Roblox Tools, if present, use slots **4–9**; Radio and Hammer are currently bag items, not held Tools. Tool selection uses the existing Humanoid/weapon equip pipeline, with no new weapon-grant remote. The bar hides during menus, death/unconsciousness and vehicle seating.
 
 ## Chat and radio
 
@@ -279,7 +283,7 @@ Chat uses Roblox's TextChatService (so Roblox's text filter still applies), with
 - **Minimap** (top right): north-up, centred on you, showing the grid, objectives in their owner's colour, main bases, friendlies (green = your squad, blue = the rest of your side) and pings.
 - **Fullscreen map**: press **M**. It shows the whole battlefield with lettered/numbered grid squares and player names. Left click places a ping, right click clears your pings. The main menu moved to **P**.
 - **Compass** (top centre): bearing, your grid square, and pings marked on the strip.
-- **Pings**: press **T** to ping the world surface under your **cursor**, not the centre of the camera. Hold **Left Alt** to unlock/move the cursor in first person, then press T. The ray uses screen coordinates (including Roblox's top-bar inset) and ignores your character and first-person viewmodel. Pings show on the map, minimap, compass and in the world with a distance. Fullscreen-map clicks still ping the clicked map position.
+- **Pings**: press **T** to ping the world surface **directly at your cursor**, not the centre of the camera. Hold **Left Alt** to unlock/move the cursor in first person, then press T. The ray uses raw viewport coordinates without adding Roblox's top-bar inset, and ignores your character and first-person viewmodel. The world diamond is centred on that exact hit point, with the distance label below it. Pings show on the map, minimap, compass and in the world. Fullscreen-map clicks still ping the clicked map position.
   - Squad members' pings: only their squad sees them.
   - Squad Commander pings: every squad on the side.
   - Commander pings: everyone on the side. Enemies never see your pings.
@@ -295,7 +299,7 @@ Menus use a shared charcoal/amber tactical theme with thin borders, button hover
 World interactions are **hold-Alt, cursor-targeted**, ArmA-style:
 
 1. Get within reach, **hold Left Alt**, and point at a player, vehicle or object.
-2. The selected target is highlighted and its custom action cards open beside the cursor. Move onto a card and **left-click**; for longer actions, keep the mouse button held until the progress bar completes.
+2. The selected target is highlighted and its custom action cards open beside the cursor. Move onto a card and **left-click**; for longer actions, keep the mouse button held until the progress bar completes. **Vehicle cargo is the exception:** keep Alt held and press the card's **V** shortcut.
 3. **Release Alt** to hide the actions and cancel an unfinished hold. Moving out of reach, opening a modal, typing, becoming unconscious or losing window focus also disables interactions.
 
 No interaction prompts appear simply because you are nearby. Only the selected object's actions are enabled locally. Native F/G world-prompt activation is disabled; Roblox's prompt hold/trigger pipeline remains underneath and the server still validates each action. Weapon-locker item clicks also require Alt. Personal menus (I/H/P/M), vehicle exit (Space), and actions inside an already-open menu keep their normal controls. Weapon and mounted-gun firing are blocked while Alt is held.
@@ -314,7 +318,7 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: hold **
 
 - **Cooldowns:** every vehicle starts its own timer when it's deployed. A new one can only spawn while fewer than the max are alive and a timer has run out.
 - **Seats:** hold **Left Alt**, point at the vehicle and click **Get in / switch seat**. **Space** gets you out. Only your own side can get in.
-- **Cargo inventory:** hold **Left Alt**, point at a friendly vehicle and click **Open cargo inventory**. It shows onboard supplies/capacity and the nearby depot. Select **50 / 100 / 250 / 500 / ALL**, then click **Load into vehicle** or **Unload to depot**. **G**, **Escape** or **X** closes it.
+- **Cargo inventory:** hold **Left Alt**, point at a friendly vehicle, then press **V** on its cargo action. V alone does not open cargo. It shows onboard supplies/capacity and the nearby depot. Select **50 / 100 / 250 / 500 / ALL**, then click **Load into vehicle** or **Unload to depot**. **V**, **Escape** or **X** closes it.
   - At **main**, loading draws from unlimited supplies; unloading returns cargo to main.
   - Inside a **friendly FOB** radius, transfers work both ways between its stock (maximum 3000) and the vehicle. Amounts are clamped to available stock and free space.
   - Away from a depot you can inspect cargo, but transfer buttons are disabled. Cargo closes if you move out of interaction range, die, become unconscious, switch sides or the vehicle is destroyed/despawned.
@@ -329,7 +333,7 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: hold **
 
 ## Logistics and base building
 
-- **Supplies:** use the **Alt + click cargo inventory** on a friendly vehicle to load supplies at main and unload them into a friendly FOB (max 3000). Trucks carry 1000 and smaller vehicles have their own configurable capacities. You can also reload from a stocked FOB.
+- **Supplies:** use **Left Alt + V** on a friendly vehicle to load supplies at main and unload them into a friendly FOB (max 3000). Trucks carry 1000 and smaller vehicles have their own configurable capacities. You can also reload from a stocked FOB.
 - **Placing (Squad Commanders and the Commander only):** press **B** for the build menu, pick a structure, then move the green ghost with the mouse. **R** rotates, left click places, right click cancels.
   - A **FOB Radio** is free, but must be 300 studs from a main base and 250 from another FOB.
   - Everything else must be inside a friendly FOB's 150-stud radius and is paid from that FOB's supplies when placed: HAB 300 (one per FOB), Ammo Crate 150, Bunker 250, HESCO 60, Sandbags 20, Razor Wire 15.

@@ -8,6 +8,7 @@ GearConfig.InventoryKey = "I" -- Enum.KeyCode name
 GearConfig.SourceRange = 12 -- studs to an arsenal / dropped items to use them
 GearConfig.PileLifetime = 300 -- seconds dropped items stay on the ground
 GearConfig.ClassSetsMedicalLevel = true -- Medic class = medical level 1, everyone else 0
+GearConfig.SpawnMedicalLoadoutLevel = 0 -- basic supplies fit the uniform; restock larger kits after equipping storage
 
 -- Movement: no slowdown up to FreeMass, then walk speed falls linearly to MinSpeed at MaxMass.
 GearConfig.FreeMass = 25
@@ -124,49 +125,37 @@ GearConfig.Kits = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "AssaultPack",
 		items = with({ { "Ammo556", 30 * 7 } }),
 	},
 	["Squad Commander"] = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "AssaultPack",
 		items = with({ { "Ammo556", 30 * 6 } }),
 	},
 	Commander = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "AssaultPack",
 		items = with({ { "Ammo556", 30 * 5 } }),
 	},
-	Medic = { -- lighter chest rig instead of a plate carrier to make room for the medical gear
+	Medic = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "ChestRig",
-		backpack = "Carryall",
 		items = with({ { "Ammo556", 30 * 5 } }),
 	},
 	Engineer = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "FieldPack",
 		items = with({ { "Ammo556", 30 * 5 } }),
 	},
 	["Machine Gunner"] = {
 		primary = "M4A1",
 		handgun = "G17",
 		uniform = "Uniform",
-		vest = "PlateCarrier",
-		backpack = "FieldPack",
-		items = with({ { "Ammo556", 30 * 12 } }),
+		items = with({ { "Ammo556", 30 * 8 } }),
 	},
 } :: { [string]: Kit }
 

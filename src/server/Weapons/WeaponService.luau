@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Medical = ReplicatedStorage:WaitForChild("Medical")
 local Weapons = Medical:WaitForChild("Weapons")
 local WeaponConfig = require(Weapons.Config)
+local Stance = require(Weapons.Stance)
 local Models = require(Weapons.Models)
 local Ballistics = require(Weapons.Ballistics)
 local Remotes = require(Medical.Remotes)
@@ -396,7 +397,7 @@ local function onStance(player: Player, crouch: any, sprint: any, lean: any)
 	if not character or typeof(lean) ~= "number" or lean ~= lean then
 		return
 	end
-	if MedicalService.isIncapacitated(player) or Carry.isCarrying(player) then
+	if MedicalService.isIncapacitated(player) or Carry.isCarrying(player) or Stance.isDriving(humanoidOf(player)) then
 		resetStance(character)
 		return
 	end
@@ -645,6 +646,15 @@ function WeaponService.init()
 	local function onCharacter(player: Player)
 		if WeaponConfig.GiveOnSpawn then
 			task.defer(WeaponService.giveLoadout, player)
+		end
+		local character = player.Character
+		local humanoid = character and character:WaitForChild("Humanoid", 10)
+		if humanoid and humanoid:IsA("Humanoid") then
+			humanoid.Seated:Connect(function(active)
+				if active and Stance.isDriving(humanoid) then
+					resetStance(character)
+				end
+			end)
 		end
 	end
 	local function onPlayer(player: Player)

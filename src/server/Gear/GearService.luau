@@ -281,8 +281,7 @@ function GearService.spawn(player: Player)
 	if GearConfig.ClassSetsMedicalLevel then
 		player:SetAttribute("MedicalLevel", if player:GetAttribute("Class") == "Medic" then 1 else 0)
 	end
-	local level = GearService.levelOf(player)
-	local s = Gear.fromKit(kitFor(player), Config.Loadouts[level] or Config.Loadouts[0])
+	local s = Gear.fromKit(kitFor(player), Config.Loadouts[GearConfig.SpawnMedicalLoadoutLevel] or Config.Loadouts[0])
 	states[player] = s
 	GearService.changed(player)
 end
@@ -446,7 +445,7 @@ local function onGear(player: Player, action: any, ...)
 	end
 	local kind, inst = nearestSource(player)
 	fn(player, GearService.get(player), kind, inst, ...)
-	GearService.changed(player, action == "open")
+	GearService.changed(player)
 end
 
 -- Arsenal prompts -------------------------------------------------------------------------------------

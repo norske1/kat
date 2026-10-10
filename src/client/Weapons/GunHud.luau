@@ -67,7 +67,7 @@ function GunHud.init(screen: ScreenGui)
 
 	panel = Ui.make("Frame", {
 		Size = UDim2.fromOffset(170, 64),
-		Position = UDim2.new(1, -320, 1, -84),
+		Position = UDim2.new(1, -320, 1, -168),
 		BackgroundColor3 = T.Background,
 		BackgroundTransparency = 0.2,
 		ZIndex = 20,

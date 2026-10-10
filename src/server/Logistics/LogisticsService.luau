@@ -439,7 +439,8 @@ function LogisticsService.onVehicle(model: Model, def)
 	prompt.Style = Enum.ProximityPromptStyle.Custom
 	prompt.ActionText = "Open cargo inventory"
 	prompt.ObjectText = def.name
-	prompt.KeyboardKeyCode = Enum.KeyCode.G
+	prompt.KeyboardKeyCode = Enum.KeyCode.V
+	prompt:SetAttribute("InteractionKey", "V")
 	prompt.GamepadKeyCode = Enum.KeyCode.ButtonY
 	prompt.RequiresLineOfSight = false
 	prompt.MaxActivationDistance = cargoVehicles[model]

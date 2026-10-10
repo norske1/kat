@@ -57,20 +57,23 @@ test("interaction mode requires Alt and a usable, focused character", function()
 	end
 end)
 
-test("cursor rays use screen coordinates, never the camera centre", function()
+test("cursor rays use raw viewport coordinates without an extra top-bar offset", function()
 	local Interaction = Harness.require("Interaction")
 	local calls = {}
 	local expectedRay = { Origin = "cursor origin", Direction = "cursor direction" }
 	local camera = {
 		ViewportSize = { X = 1920, Y = 1080 },
 		CFrame = { LookVector = "centre direction" },
-		ScreenPointToRay = function(_, x, y)
+		ScreenPointToRay = function()
+			error("GetMouseLocation is already viewport-relative; screen conversion would offset the ping")
+		end,
+		ViewportPointToRay = function(_, x, y)
 			table.insert(calls, { x, y })
 			return expectedRay
 		end,
 	}
 	expect(Interaction.cursorRay(camera, { X = 1417, Y = 283 }) == expectedRay)
-	expect(calls[1][1] == 1417 and calls[1][2] == 283, "off-centre cursor preserved, including GUI inset")
+	expect(calls[1][1] == 1417 and calls[1][2] == 283, "off-centre cursor preserved without adding GUI inset")
 	expect(Interaction.cursorRay(camera, { X = 72, Y = 811 }) == expectedRay)
 	expect(calls[2][1] == 72 and calls[2][2] == 811, "a different cursor changes the ray")
 	expect(Interaction.cursorRay(nil, { X = 0, Y = 0 }) == nil, "camera replacement is safe")
@@ -737,14 +740,91 @@ test("gear: weights, containers and kits", function()
 	expect(not Gear.canSprint(GearConfig.NoSprintMass + 1), "too heavy to sprint")
 	expect(Gear.def("Saline500").mass == 0.5 and Gear.def("FieldDressing").kind == "medical", "medical weights")
 	for class, kit in GearConfig.Kits do
-		local level = if class == "Medic" then 1 else 0
-		local st, missing = Gear.fromKit(kit, Config.Loadouts[level])
+		local st, missing = Gear.fromKit(kit, Config.Loadouts[GearConfig.SpawnMedicalLoadoutLevel])
 		expect(next(missing) == nil, class .. " kit doesn't fit: " .. tostring(next(missing)))
+		expect(st.slots.vest == nil and st.slots.backpack == nil, class .. " must spawn without a vest or backpack")
+		expect(
+			Gear.capacity(st, "vest") == 0 and Gear.capacity(st, "backpack") == 0,
+			"unequipped containers have no capacity"
+		)
+		expect(Gear.load(st, "uniform") <= Gear.capacity(st, "uniform"), "starter supplies fit the uniform")
+		expect(Gear.count(st, "Radio") == 1 and Gear.count(st, "Hammer") == 1, "basic equipment is retained")
 		local mass = Gear.mass(st)
 		print(("    %s kit %.1f kg"):format(class, mass))
 		expect(Gear.canSprint(mass) and Gear.speed(mass) >= 0.9, class .. " kit too heavy")
 		expect(Gear.def(st.slots.primary).weaponId ~= nil, "primary weapon")
 	end
+end)
+
+test("personal inventory opens without a locker but respects character and UI state", function()
+	local Gear = Harness.require("Gear/Gear")
+	local ctx =
+		{ hasCharacter = true, alive = true, conscious = true, typing = false, modal = false, alreadyOpen = false }
+	expect(Gear.canOpen(ctx), "no source or locker is required")
+	for _, field in { "hasCharacter", "alive", "conscious" } do
+		local blocked = table.clone(ctx)
+		blocked[field] = false
+		expect(not Gear.canOpen(blocked), field .. " gate")
+	end
+	ctx.typing = true
+	expect(not Gear.canOpen(ctx), "typing must not open inventory")
+	ctx.typing = false
+	ctx.modal = true
+	expect(not Gear.canOpen(ctx), "don't stack inventory onto another modal")
+	ctx.alreadyOpen = true
+	expect(Gear.canOpen(ctx), "refreshing an existing inventory is allowed")
+end)
+
+test("hotbar weapon slots stay stable across equip, respawn and acquisition order", function()
+	local Hotbar = Harness.require("Weapons/Hotbar")
+	local primary = { weaponId = "M4A1", name = "Rifle", tool = "rifle" }
+	local sidearm = { weaponId = "G17", name = "Pistol", tool = "pistol" }
+	local first = Hotbar.layout({ sidearm, primary })
+	local second = Hotbar.layout({ primary, sidearm })
+	expect(first[1] == primary and first[2] == sidearm and first[3] == nil)
+	expect(second[1] == first[1] and second[2] == first[2], "Backpack versus Character order cannot swap keys")
+	local pistolOnly = Hotbar.layout({ sidearm })
+	expect(pistolOnly[1] == nil and pistolOnly[2] == sidearm, "dropping the rifle doesn't change the pistol key")
+	local replacement = { weaponId = "M870", name = "Shotgun", tool = "replacement" }
+	expect(Hotbar.layout({ replacement, sidearm })[1] == replacement, "primary replacements use slot 1")
+	expect(next(Hotbar.layout({})) == nil, "no stale tools after death")
+	expect(#Hotbar.Keys == 9 and Hotbar.Keys[1] == "One" and Hotbar.Keys[9] == "Nine")
+end)
+
+test("hotbar extras are deterministic and never overwrite the weapon slots", function()
+	local Hotbar = Harness.require("Weapons/Hotbar")
+	local a = { name = "Hammer" }
+	local b = { name = "Radio" }
+	local slots = Hotbar.layout({ b, a })
+	expect(slots[1] == nil and slots[2] == nil and slots[3] == nil)
+	expect(slots[4] == a and slots[5] == b)
+	local many = {}
+	for i = 1, 12 do
+		table.insert(many, { name = string.format("Tool %02d", i) })
+	end
+	local full = Hotbar.layout(many)
+	expect(full[9] ~= nil and full[10] == nil, "extras obey the nine-slot limit")
+end)
+
+test("driver stance blocks vehicle seats and tagged driver seats but not passengers", function()
+	local Stance = Harness.require("Weapons/Stance")
+	local function hum(kind, role)
+		return {
+			SeatPart = {
+				IsA = function(_, name)
+					return name == kind
+				end,
+				GetAttribute = function(_, name)
+					return if name == "Role" then role else nil
+				end,
+			},
+		}
+	end
+	expect(Stance.isDriving(hum("VehicleSeat", nil)), "native driver seat")
+	expect(Stance.isDriving(hum("Seat", "driver")), "tagged custom driver seat")
+	expect(not Stance.isDriving(hum("Seat", "passenger")))
+	expect(not Stance.isDriving(hum("Seat", "gunner")))
+	expect(not Stance.isDriving({}) and not Stance.isDriving(nil), "on foot / no character")
 end)
 
 test("chat: local range and radio channels", function()

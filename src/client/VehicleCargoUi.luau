@@ -124,7 +124,7 @@ function VehicleCargoUi.init()
 		Parent = window,
 	})
 	Ui.label({
-		Text = "G / ESC  Close    ·    Load or return supplies at main; transfer both ways at a friendly FOB",
+		Text = "V / ESC  Close    ·    Load or return supplies at main; transfer both ways at a friendly FOB",
 		Font = T.FontMono,
 		TextColor3 = T.TextDim,
 		TextSize = 10,
@@ -246,7 +246,8 @@ function VehicleCargoUi.init()
 		if
 			not processed
 			and gui.Enabled
-			and (input.KeyCode == Enum.KeyCode.G or input.KeyCode == Enum.KeyCode.Escape)
+			and not UserInputService:GetFocusedTextBox()
+			and (input.KeyCode == Enum.KeyCode.V or input.KeyCode == Enum.KeyCode.Escape)
 		then
 			close()
 		end

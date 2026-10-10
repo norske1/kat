@@ -22,7 +22,7 @@ function Interaction.active(ctx: Context): boolean
 end
 
 function Interaction.cursorRay(camera: any, point: Vector2): Ray?
-	return if camera then camera:ScreenPointToRay(point.X, point.Y) else nil
+	return if camera then camera:ViewportPointToRay(point.X, point.Y) else nil
 end
 
 function Interaction.target(parent: Instance?, arsenal: boolean): Instance?

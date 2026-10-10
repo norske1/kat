@@ -4,6 +4,9 @@ local GearConfig = require(script.Parent.Config)
 local Items = require(script.Parent.Parent.Items)
 
 local Gear = {}
+function Gear.canOpen(ctx): boolean
+	return ctx.hasCharacter and ctx.alive and ctx.conscious and not ctx.typing and (ctx.alreadyOpen or not ctx.modal)
+end
 
 Gear.WEAPON_SLOTS = { "primary", "handgun", "launcher" }
 Gear.CONTAINERS = { "uniform", "vest", "backpack" }

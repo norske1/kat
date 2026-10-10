@@ -311,7 +311,7 @@ local function syncBillboards()
 			att.Parent = workspace.Terrain
 			local gui = Instance.new("BillboardGui")
 			gui.AlwaysOnTop = true
-			gui.Size = UDim2.fromOffset(120, 46)
+			gui.Size = UDim2.fromOffset(120, 72)
 			gui.LightInfluence = 0
 			gui.Adornee = att
 			gui.Parent = att
@@ -322,7 +322,9 @@ local function syncBillboards()
 				TextColor3 = PING_COLOR,
 				TextStrokeTransparency = 0.3,
 				TextXAlignment = Enum.TextXAlignment.Center,
-				Size = UDim2.new(1, 0, 0, 24),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(24, 24),
 				Parent = gui,
 			})
 			local text = Ui.label({
@@ -330,7 +332,7 @@ local function syncBillboards()
 				TextSize = 12,
 				TextStrokeTransparency = 0.3,
 				TextXAlignment = Enum.TextXAlignment.Center,
-				Position = UDim2.fromOffset(0, 24),
+				Position = UDim2.new(0, 0, 0.5, 14),
 				Size = UDim2.new(1, 0, 0, 18),
 				Parent = gui,
 			})
@@ -338,6 +340,7 @@ local function syncBillboards()
 			billboards[ping.id] = b
 		end
 		b.ping = ping
+		b.att.WorldPosition = ping.pos
 	end
 	for id, b in billboards do
 		if not seen[id] then
