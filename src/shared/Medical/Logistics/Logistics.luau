@@ -4,14 +4,28 @@ local Logistics = {}
 
 Logistics.LEADERS = { ["Squad Commander"] = true, Commander = true }
 
+export type FobContext = { stock: number, habs: number }
 export type PlaceContext = {
 	class: string,
 	distance: number, -- from the player to the spot
-	fob: { stock: number, habs: number }?, -- the friendly FOB whose radius contains the spot
+	fob: FobContext?, -- the friendly FOB whose radius contains the spot
 	mainDistance: number, -- to the nearest main base
 	fobDistance: number, -- to the nearest FOB of either side
 	blocked: boolean, -- overlaps another structure
 }
+
+function Logistics.available(kind: string, def: { cost: number }, fob: FobContext?): (boolean, string?)
+	if kind == "FOB" then
+		return true, nil
+	elseif not fob then
+		return false, "Must be inside a friendly FOB's radius"
+	elseif fob.stock < def.cost then
+		return false, string.format("Missing %d supplies (%d/%d available)", def.cost - fob.stock, fob.stock, def.cost)
+	elseif kind == "HAB" and fob.habs > 0 then
+		return false, "This FOB already has a HAB"
+	end
+	return true, nil
+end
 
 function Logistics.canPlace(kind: string, def: { cost: number }, ctx: PlaceContext, cfg): (boolean, string?)
 	if not Logistics.LEADERS[ctx.class] then
@@ -29,15 +43,7 @@ function Logistics.canPlace(kind: string, def: { cost: number }, ctx: PlaceConte
 		end
 		return true, nil
 	end
-	local fob = ctx.fob
-	if not fob then
-		return false, "Must be inside a friendly FOB's radius"
-	elseif fob.stock < def.cost then
-		return false, string.format("The FOB needs %d supplies (has %d)", def.cost, fob.stock)
-	elseif kind == "HAB" and fob.habs > 0 then
-		return false, "This FOB already has a HAB"
-	end
-	return true, nil
+	return Logistics.available(kind, def, ctx.fob)
 end
 
 -- How much moves from `from` into a container holding `to` with capacity `cap`.

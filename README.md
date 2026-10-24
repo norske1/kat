@@ -72,6 +72,9 @@ level and spawning casualties. Everyone is level 2 (doctor) in Studio. See `Conf
 | H | Self-treatment menu |
 | X | Cancel the current treatment (also stops repeating CPR) |
 | Left Alt (hold) + G | Drop a carried / dragged patient |
+| Left Alt (hold) + F | Build the targeted blueprint (green card, Hammer equipped) |
+| Left Alt (hold) + G | Dismantle / remove the targeted structure (red card) |
+| Left Alt (hold) + V | Open the targeted friendly vehicle's cargo |
 | I | Toggle personal field inventory anywhere (the medical bag is on its HUD button) |
 | F2 | Toggle the debug panel (Studio / admins only, hidden by default) |
 
@@ -301,7 +304,7 @@ Menus use a shared charcoal/amber tactical theme with thin borders, button hover
 World interactions are **hold-Alt, cursor-targeted**, ArmA-style:
 
 1. Get within reach, **hold Left Alt**, and point at a player, vehicle or object.
-2. The selected target is highlighted and its custom action cards open beside the cursor. Move onto a card and **left-click**; for longer actions, keep the mouse button held until the progress bar completes. **Vehicle cargo is the exception:** keep Alt held and press the card's **V** shortcut.
+2. The selected target is highlighted and its custom action cards open beside the cursor. Move onto a card and **left-click**; for longer actions, keep the mouse button held until the progress bar completes. Cards with a shortcut (**F** build, **G** dismantle, **V** cargo) can also be used by pressing (or holding) that key while Alt is held; the client forwards the key to that card's prompt with `InputHoldBegin`/`InputHoldEnd`, so Roblox's own key handling is disabled on every prompt. **Vehicle cargo is key-only:** clicking a vehicle never opens cargo, and only the clicked card fires. Prompts never use `Enum.KeyCode.Unknown` (mouse and touch input report that KeyCode too, which made one Alt+LMB trigger every shown prompt); cards without a shortcut use an unreachable placeholder key and `ClickablePrompt` is off.
 3. **Release Alt** to hide the actions and cancel an unfinished hold. Moving out of reach, opening a modal, typing, becoming unconscious or losing window focus also disables interactions.
 
 No interaction prompts appear simply because you are nearby. Only the selected object's actions are enabled locally. Native F/G world-prompt activation is disabled; Roblox's prompt hold/trigger pipeline remains underneath and the server still validates each action. Weapon-locker item clicks also require Alt. Personal menus (I/H/P/M), vehicle exit (Space), and actions inside an already-open menu keep their normal controls. Weapon and mounted-gun firing are blocked while Alt is held.
@@ -336,12 +339,12 @@ Each main base has a **vehicle pad** with a motor pool post per vehicle: hold **
 ## Logistics and base building
 
 - **Supplies:** use **Left Alt + V** on a friendly vehicle to load supplies at main and unload them into a friendly FOB (max 3000). Trucks carry 1000 and smaller vehicles have their own configurable capacities. You can also reload from a stocked FOB.
-- **Placing (Squad Commanders and the Commander only):** press **B** for the build menu, pick a structure, then move the green ghost with the mouse. **R** rotates, left click places, right click cancels.
+- **Placing (Squad Commanders and the Commander only):** press **B** for the build menu. It shows the supplies of the FOB you're standing in, and every structure's cost and availability; anything the FOB can't afford is red with the exact shortage (e.g. `Missing 200 supplies (100/300 available)`) and can't be selected. Pick an available structure, then move the ghost with the mouse: it is **green** with "READY TO PLACE" when the server would accept it and **red** with the reason (supplies, range, spacing, blocked, HAB limit) when it wouldn't; left click only sends valid placements. **R** rotates, right click cancels. The server re-checks everything.
   - A **FOB Radio** is free, but must be 300 studs from a main base and 250 from another FOB.
   - Everything else must be inside a friendly FOB's 150-stud radius and is paid from that FOB's supplies when placed: HAB 300 (one per FOB), Ammo Crate 150, Bunker 250, HESCO 60, Sandbags 20, Razor Wire 15.
-- **Building (everyone):** placed structures are see-through blueprints. Equip your **Hammer** (hotbar **4**), hold **Left Alt**, point at one and hold its **Build** action; each completed hold adds one build point until it's solid. The server checks both Hammer ownership and the held Tool.
+- **Building (everyone):** placed structures are see-through blueprints. Equip your **Hammer** (hotbar **4**), hold **Left Alt**, point at one and hold **F** (or hold the green **Build** card); each completed hold adds one build point until it's solid. The server checks both Hammer ownership and the held Tool. Supplies were paid at placement, so a blueprint stays buildable even if the FOB later runs dry.
 - **Structures:** a finished Ammo Crate works like an arsenal (press I next to it). A finished **HAB** shows on the map: click it on the fullscreen map (M) to respawn there. You spawn at main instead if an enemy is within 40 studs of it.
-- **Removing:** hold **Left Alt**, target the structure and hold **Remove** (leaders, supplies refunded) or **Dismantle** (enemy FOB radio, 6 seconds).
+- **Dismantling:** hold **Left Alt**, target the structure and hold **G** (or hold the red **Dismantle** card): leaders remove their own side's structures (2 s, supplies refunded); enemies dismantle a FOB radio (6 s) to take down the whole FOB. Build is always the green F card and Dismantle the red G card, so they can't be confused.
 - Everything is cleared when a new round starts. Settings: `src/shared/Medical/Logistics/Config.luau`. Models are placeholder blocks.
 
 ## Roblox content and maturity

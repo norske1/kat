@@ -11,8 +11,6 @@ local InteractionInput = require(script.Parent.InteractionInput)
 local Ui = require(script.Parent.Ui)
 local T = Ui.Theme
 local InteractionUi = {}
--- selene: allow(deprecated)
-local NO_KEY = Enum.KeyCode.Unknown
 
 function InteractionUi.init()
 	local player = Players.LocalPlayer
@@ -66,7 +64,7 @@ function InteractionUi.init()
 		if state.tween then
 			state.tween:Cancel()
 		end
-		if (state.touching or state.holding) and prompt.Parent then
+		if (state.touching or state.keyDown or state.holding) and prompt.Parent then
 			prompt:InputHoldEnd()
 		end
 		for _, c in state.connections do
@@ -78,9 +76,7 @@ function InteractionUi.init()
 		if inst:IsA("ProximityPrompt") then
 			registry[inst] = inst:GetAttribute("InteractionEnabled") ~= false and inst.Enabled
 			inst.Enabled = false
-			inst.KeyboardKeyCode = if inst:GetAttribute("InteractionKey") == "V" then Enum.KeyCode.V else NO_KEY
-			inst.GamepadKeyCode = NO_KEY
-			inst.Exclusivity = Enum.ProximityPromptExclusivity.AlwaysShow
+			Interaction.configure(inst)
 		end
 	end
 	workspace.DescendantAdded:Connect(register)
@@ -110,6 +106,37 @@ function InteractionUi.init()
 			cancel()
 		end
 	end)
+	-- Shortcut keys (F build, G dismantle, V cargo) are handled here, not by Roblox, so only the selected target's
+	-- matching card starts its hold.
+	UserInputService.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Keyboard or not InteractionInput.isActive() then
+			return
+		end
+		for prompt, state in visible do
+			if
+				selected[prompt]
+				and not state.keyDown
+				and not state.touching
+				and Interaction.matches(prompt, input.KeyCode)
+			then
+				state.keyDown = true
+				prompt:InputHoldBegin()
+			end
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Keyboard then
+			return
+		end
+		for prompt, state in visible do
+			if state.keyDown and Interaction.matches(prompt, input.KeyCode) then
+				state.keyDown = false
+				if prompt.Parent then
+					prompt:InputHoldEnd()
+				end
+			end
+		end
+	end)
 	UserInputService.WindowFocusReleased:Connect(cancel)
 	player.CharacterRemoving:Connect(cancel)
 	ProximityPromptService.PromptShown:Connect(function(prompt: ProximityPrompt)
@@ -126,7 +153,13 @@ function InteractionUi.init()
 			LayoutOrder = order,
 			Parent = list,
 		}, { Ui.corner(3) })
-		Ui.stroke(card)
+		local border = Ui.stroke(card)
+		local stripe = Ui.make("Frame", {
+			Name = "ActionStripe",
+			Size = UDim2.new(0, 3, 1, 0),
+			BackgroundColor3 = T.Accent,
+			Parent = card,
+		})
 		local key = Ui.label({
 			Position = UDim2.fromOffset(12, 12),
 			Size = UDim2.fromOffset(44, 42),
@@ -163,14 +196,26 @@ function InteractionUi.init()
 			BackgroundColor3 = T.Accent,
 			Parent = card,
 		})
-		local state: { [string]: any } = { card = card, connections = {}, touching = false, holding = false }
+		local state: { [string]: any } =
+			{ card = card, connections = {}, touching = false, keyDown = false, holding = false }
 		visible[prompt] = state
 		local function refresh()
 			local shortcut = prompt:GetAttribute("InteractionKey")
+			local style = prompt:GetAttribute("InteractionStyle")
+			local color = if style == "build" then T.Good elseif style == "destructive" then T.Bad else T.Accent
+			border.Color, stripe.BackgroundColor3, fill.BackgroundColor3 = color, color, color
+			key.TextColor3 = color
+			action.TextColor3 = if style then color else T.Text
 			key.Text = shortcut or "LMB"
 			object.Text = prompt.ObjectText:upper()
-			action.Text = (if shortcut then "Press · " elseif prompt.HoldDuration > 0 then "Hold · " else "Click · ")
-				.. prompt.ActionText
+			local verb = if prompt.HoldDuration > 0 then "Hold" elseif shortcut then "Press" else "Click"
+			local character = player.Character
+			if style == "build" and character and character:GetAttribute("GearHeldItem") ~= "Hammer" then
+				action.Text = "Equip your Hammer first (hotbar)"
+				action.TextColor3 = T.Bad
+			else
+				action.Text = verb .. " · " .. prompt.ActionText
+			end
 		end
 		local function finish()
 			if state.tween then
@@ -180,6 +225,10 @@ function InteractionUi.init()
 			fill.Size = UDim2.fromOffset(0, 3)
 		end
 		table.insert(state.connections, prompt.Changed:Connect(refresh))
+		table.insert(state.connections, prompt.AttributeChanged:Connect(refresh))
+		if player.Character then
+			table.insert(state.connections, player.Character.AttributeChanged:Connect(refresh))
+		end
 		table.insert(
 			state.connections,
 			prompt.Destroying:Connect(function()
@@ -206,11 +255,7 @@ function InteractionUi.init()
 					input.UserInputType == Enum.UserInputType.Touch
 					or input.UserInputType == Enum.UserInputType.MouseButton1
 				then
-					if
-						not InteractionInput.isActive()
-						or not selected[prompt]
-						or prompt:GetAttribute("InteractionKey")
-					then
+					if not InteractionInput.isActive() or not selected[prompt] or not Interaction.clickable(prompt) then
 						return
 					end
 					state.touching = true
@@ -274,7 +319,7 @@ function InteractionUi.init()
 		end
 		local holding = false
 		for _, state in visible do
-			holding = holding or state.touching or state.holding
+			holding = holding or state.touching or state.keyDown or state.holding
 		end
 		if not active then
 			target = nil
@@ -305,10 +350,7 @@ function InteractionUi.init()
 			popupPoint = point
 		end
 		for prompt in registry do
-			local keyboard = if prompt:GetAttribute("InteractionKey") == "V" then Enum.KeyCode.V else NO_KEY
-			if prompt.KeyboardKeyCode ~= keyboard then
-				prompt.KeyboardKeyCode = keyboard
-			end
+			Interaction.configure(prompt)
 			local link = prompt:FindFirstChild("InteractionTarget")
 			local owner = if link and link:IsA("ObjectValue")
 				then link.Value

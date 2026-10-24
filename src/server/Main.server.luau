@@ -14,6 +14,7 @@ Remotes.init()
 local function customPrompt(inst: Instance)
 	if inst:IsA("ProximityPrompt") then
 		inst.Style = Enum.ProximityPromptStyle.Custom
+		inst.ClickablePrompt = false
 		inst:SetAttribute("InteractionEnabled", inst.Enabled)
 		inst:GetPropertyChangedSignal("Enabled"):Connect(function()
 			inst:SetAttribute("InteractionEnabled", inst.Enabled)

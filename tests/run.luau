@@ -954,6 +954,77 @@ test("logistics: placement rules and supplies", function()
 	expect(Logistics.transfer(1000, 2500, 3000) == 500, "FOB stock cap")
 end)
 
+test("construction menu shows exact supply shortages before placement", function()
+	local Logistics = Harness.require("Logistics/Logistics")
+	local hab = { cost = 300 }
+	local ok, why = Logistics.available("HAB", hab, { stock = 100, habs = 0 })
+	expect(not ok and why == "Missing 200 supplies (100/300 available)", tostring(why))
+	ok, why = Logistics.available("HAB", hab, { stock = 300, habs = 0 })
+	expect(ok and why == nil, "exact stock is enough")
+	ok, why = Logistics.available("HAB", hab, { stock = 900, habs = 1 })
+	expect(not ok and why == "This FOB already has a HAB")
+	ok, why = Logistics.available("Sandbags", { cost = 20 }, nil)
+	expect(not ok and why == "Must be inside a friendly FOB's radius")
+	expect(Logistics.available("FOB", { cost = 0 }, nil), "FOB radios never need stock")
+	local cfg = { PlaceRange = 40, FobMinFromMain = 300, FobSpacing = 250 }
+	local placed, reason = Logistics.canPlace("HAB", hab, {
+		class = "Commander",
+		distance = 10,
+		fob = { stock = 299, habs = 0 },
+		mainDistance = 1000,
+		fobDistance = 1000,
+		blocked = false,
+	}, cfg)
+	expect(not placed and reason == "Missing 1 supplies (299/300 available)", "server rejects with the same text")
+end)
+
+test("interaction prompts: F/G/V shortcuts, no bare-click triggers, V card is key-only", function()
+	local Interaction = ModuleHarness.load("shared/Medical/Interaction", {})
+	local Instance = Roblox.Instance
+	local function prompt(key, hold)
+		local p = Instance.new("ProximityPrompt")
+		p.ClickablePrompt = true
+		p.HoldDuration = hold
+		p.KeyboardKeyCode = Roblox.Enum.KeyCode.F
+		if key then
+			p:SetAttribute("InteractionKey", key)
+		end
+		Interaction.configure(p)
+		return p
+	end
+	local seat = prompt(nil, 0)
+	expect(seat.KeyboardKeyCode == Interaction.NoKeyboard, "cards without a shortcut are click-only")
+	expect(
+		not Interaction.matches(seat, Roblox.Enum.KeyCode.F) and not Interaction.matches(seat, Interaction.NoKeyboard)
+	)
+	expect(seat.ClickablePrompt == false, "Roblox must not trigger prompts on a bare click")
+	expect(seat.Style == Roblox.Enum.ProximityPromptStyle.Custom)
+	expect(Interaction.clickable(seat))
+	local cargo = prompt("V", 0)
+	expect(cargo.KeyboardKeyCode == Interaction.NoKeyboard, "Roblox never handles keys itself; the client does")
+	expect(cargo.ClickablePrompt == false)
+	expect(Interaction.matches(cargo, Roblox.Enum.KeyCode.V) and not Interaction.matches(cargo, Roblox.Enum.KeyCode.F))
+	expect(not Interaction.clickable(cargo), "cargo opens with V only, never with the seat click")
+	local build, dismantle = prompt("F", 1), prompt("G", 6)
+	expect(Interaction.matches(build, Roblox.Enum.KeyCode.F) and not Interaction.matches(build, Roblox.Enum.KeyCode.G))
+	expect(
+		Interaction.matches(dismantle, Roblox.Enum.KeyCode.G)
+			and not Interaction.matches(dismantle, Roblox.Enum.KeyCode.F)
+	)
+	expect(Interaction.shortcut(build) ~= Interaction.shortcut(dismantle), "build and dismantle use different keys")
+	expect(
+		Interaction.clickable(build) and Interaction.clickable(dismantle),
+		"held actions may also be held on the card"
+	)
+	expect(Interaction.shortcut(prompt("Q", 0)) == Interaction.NoKeyboard, "unknown shortcuts are ignored")
+	-- Mouse/touch InputObjects carry KeyCode Unknown, so Unknown on either slot means "any click triggers me".
+	local unknown = Roblox.Enum.KeyCode.Unknown
+	for _, p in { seat, cargo, build, dismantle } do
+		expect(p.KeyboardKeyCode ~= unknown and p.GamepadKeyCode ~= unknown, "no prompt may match a mouse click")
+	end
+	expect(Interaction.NoKeyboard ~= Interaction.NoGamepad and Interaction.NoKeyboard.EnumType == Roblox.Enum.KeyCode)
+end)
+
 local Cargo = Harness.require("Logistics/Cargo")
 
 test("R6 hit zones and crouch use the real six-part rig", function()

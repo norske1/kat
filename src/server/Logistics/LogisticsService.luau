@@ -73,6 +73,14 @@ end
 
 local function publish(fob: Fob)
 	fob.part:SetAttribute("Stock", fob.stock)
+	fob.part:SetAttribute("FobId", fob.id)
+	local habs = 0
+	for _, structure in fob.structures do
+		if structure.kind == "HAB" then
+			habs += 1
+		end
+	end
+	fob.part:SetAttribute("Habs", habs)
 end
 
 -- Structures --------------------------------------------------------------------------------------------
@@ -189,29 +197,23 @@ local function addPrompt(parent: BasePart, name: string, action: string, hold: n
 	prompt.RequiresLineOfSight = false
 	prompt.MaxActivationDistance = math.max(8, parent.Size.Magnitude / 2 + 4)
 	prompt.KeyboardKeyCode = if name == "Build" then Enum.KeyCode.F else Enum.KeyCode.G
+	prompt:SetAttribute("InteractionKey", if name == "Build" then "F" else "G")
+	prompt:SetAttribute("InteractionStyle", if name == "Build" then "build" else "destructive")
 	prompt.GamepadKeyCode = if name == "Build" then Enum.KeyCode.ButtonX else Enum.KeyCode.ButtonY
 	prompt.Parent = parent
-	local started: { [Player]: number } = {}
-	prompt.PromptButtonHoldBegan:Connect(function(player)
-		local root = rootOf(player)
-		if root and (root.Position - parent.Position).Magnitude <= prompt.MaxActivationDistance then
-			started[player] = os.clock()
-		end
-	end)
-	prompt.PromptButtonHoldEnded:Connect(function(player)
-		started[player] = nil
-	end)
+	-- Roblox runs the hold timer before Triggered reaches the server; the per-player gap only stops replay spam.
+	local last: { [Player]: number } = {}
 	prompt.Triggered:Connect(function(player)
 		local root = rootOf(player)
-		local since = started[player]
-		started[player] = nil
+		local now = os.clock()
 		if
 			root
 			and parent:IsDescendantOf(workspace)
 			and not MedicalService.isIncapacitated(player)
-			and (root.Position - parent.Position).Magnitude <= prompt.MaxActivationDistance
-			and (hold <= 0 or (since ~= nil and os.clock() - since >= math.max(0, hold - 0.15)))
+			and (root.Position - parent.Position).Magnitude <= prompt.MaxActivationDistance + 4
+			and (hold <= 0 or now - (last[player] or -math.huge) >= math.max(0, hold - 0.15))
 		then
+			last[player] = now
 			fn(player)
 		end
 	end)
@@ -308,10 +310,10 @@ local function place(player: Player, kind: any, cf: any)
 		end)
 	else
 		fob.stock -= def.cost
-		publish(fob)
 		s.fob = fob
 		table.insert(fob.structures, s)
-		addPrompt(main, "Remove", "Remove (leaders)", 2, function(p)
+		publish(fob)
+		addPrompt(main, "Remove", "Dismantle (leaders)", 2, function(p)
 			if sideOf(p) == side and Logistics.LEADERS[p:GetAttribute("Class") or ""] then
 				removeStructure(s, true)
 			end
